@@ -7,11 +7,11 @@ on:
 
 env:
   AWS_REGION: ap-southeast-2
-  ECR_REPOSITORY: prod-inv-service
-  TASK_DEFINITION: prod-inv-task
-  ECS_SERVICE: prod-inv
-  ECS_CLUSTER: prod-3dlogistix
-  CONTAINER_NAME: prod-inv
+  ECR_REPOSITORY: inventory-repo
+  TASK_DEFINITION: inventory-service
+  ECS_SERVICE: inventory-service
+  ECS_CLUSTER: FargateTestCluster
+  CONTAINER_NAME: inventory-service
 
 jobs:
   Build:
@@ -46,7 +46,7 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: prod-inv-service
+          ECR_REPOSITORY: inventory-repo
           github_token: ${{ secrets.TOKEN }}
           IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
         run: |
@@ -83,7 +83,7 @@ jobs:
         id: updating-image-tag
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: prod-inv-service
+          ECR_REPOSITORY: inventory-repo
           github_token: ${{ secrets.TOKEN }}
           IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
         run: |
