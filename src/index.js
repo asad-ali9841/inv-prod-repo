@@ -28,7 +28,7 @@ const startServer = async () => {
         method: 'get',
         maxBodyLength: Infinity,
         //url: 'http://localhost:3001/role/services',
-        url: 'http://rbaclb-1460536057.ap-southeast-2.elb.amazonaws.com/role/services',
+        url: 'http://prod-rbac-1011040531.ap-southeast-2.elb.amazonaws.com',
         headers: { }
       };
       axios.request(config)
