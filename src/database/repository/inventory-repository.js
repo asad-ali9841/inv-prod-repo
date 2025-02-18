@@ -1160,7 +1160,6 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 }
   ) {
     const skip = (page - 1) * limit;
-
     const { name: searchText, ...filters } = queryFilters;
 
     // Separate parent and variant columns
@@ -1173,6 +1172,13 @@ class InventoryRepository {
 
     // Initialize aggregation pipeline
     const pipeline = [];
+
+    const dbTotalItemsPipeline = [
+      { $match: { status: { $ne: "deleted" } } },
+      { $count: "count" },
+    ];
+    const [{ count: dbTotalItems = 0 } = {}] =
+      await ItemSharedAttributesModel.aggregate(dbTotalItemsPipeline).exec();
 
     pipeline.push({
       $lookup: {
@@ -1191,8 +1197,6 @@ class InventoryRepository {
     });
 
     const match = {};
-
-    // Apply searchText filter on name with case-insensitive regex
     if (searchText) {
       const escapedSearchText = escapeRegExp(searchText);
       match["name"] = {
@@ -1211,41 +1215,37 @@ class InventoryRepository {
 
     pipeline.push({ $match: match });
 
-    // Step 7: Project the necessary fields
-    // Dynamically build the projection
     const parentProjection = {};
     parentColumns.forEach((col) => {
       parentProjection[col] = 1;
     });
 
-    const variantProjection = {};
-    variantProjection["variants"] = {
-      $map: {
-        input: "$variants", // Iterate over `variants` array
-        as: "variant",
-        in: variantColumns.reduce((acc, column) => {
-          acc[column] = `$$variant.${column}`;
-          return acc;
-        }, {}),
+    const variantProjection = {
+      variants: {
+        $map: {
+          input: "$variants",
+          as: "variant",
+          in: variantColumns.reduce((acc, column) => {
+            acc[column] = `$$variant.${column}`;
+            return acc;
+          }, {}),
+        },
       },
     };
 
-    // Combine product and variant projections into a flat structure
     const finalProjection = {
       ...parentProjection,
       ...variantProjection,
-      _id: 1, // Always include the Variant document ID
+      _id: 1,
     };
 
-    pipeline.push({
-      $project: finalProjection,
-    });
+    pipeline.push({ $project: finalProjection });
 
     pipeline.push({ $sort: sortOptions });
 
     pipeline.push({
       $facet: {
-        totalItems: [{ $count: "count" }],
+        totalItems: [{ $count: "count" }], // Count filtered items
         products: [{ $skip: skip }, { $limit: limit }],
       },
     });
@@ -1258,7 +1258,8 @@ class InventoryRepository {
 
       return {
         products: results?.products,
-        totalItems,
+        totalItems, // Count of items matching filters
+        dbTotalItems, // Count of all non-deleted items
         totalPages: Math.ceil(totalItems / limit),
         currentPage: page,
       };
