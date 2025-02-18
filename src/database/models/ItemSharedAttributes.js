@@ -28,6 +28,7 @@ const ItemSharedSchema = new Schema({
   status: {
     type: String,
     required: true,
+    index: true,
   },
   activity: {
     type: Array,
