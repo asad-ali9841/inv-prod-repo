@@ -27,8 +27,10 @@ const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
+  credentials: {
     accessKeyId: LOCAL_ACCESS_KEY,
     secretAccessKey: LOCAL_SECRET_KEY,
+  },
 });
 
 module.exports = (app) => {
