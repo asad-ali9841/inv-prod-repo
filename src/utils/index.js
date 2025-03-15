@@ -494,3 +494,68 @@ module.exports.formatBillOfMaterial = (billOfMaterial) => {
     quantities.filter((val) => val !== "").join(", "),
   ];
 };
+
+module.exports.formatDateFromTimestamp = (
+  timestamp,
+  format,
+  separator = "/"
+) => {
+  const date =
+    typeof timestamp === "number"
+      ? new Date(timestamp)
+      : new Date(Number(timestamp));
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  const monthNamesShort = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sept",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+  const monthShort = monthNamesShort[date.getMonth()];
+
+  switch (format) {
+    case "YYYY-MM-DD":
+      return `${year}${separator}${month}${separator}${day}`;
+
+    case "YYYY/MM/DD":
+      return `${year}${separator}${month}${separator}${day}`;
+
+    case "MMM DD YYYY":
+      return `${monthShort}${separator}${day}${separator}${year}`;
+
+    case "MMM. DD YYYY":
+      return `${monthShort}.${separator}${day}${separator}${year}`;
+
+    case "MMM. DD, YYYY":
+      return `${monthShort}.${separator}${day},${separator}${year}`;
+
+    case "DD-MM-YYYY":
+      return `${day}${separator}${month}${separator}${year}`;
+
+    case "DD-MMM-YYYY":
+      return `${day}${separator}${monthShort}${separator}${year}`;
+
+    case "MM/DD/YYYY":
+      return `${month}${separator}${day}${separator}${year}`;
+
+    default:
+      throw new Error("Unsupported format");
+  }
+};
+
+module.exports.mapArrayToObject = (array, key) =>
+  array.reduce((acc, item) => {
+    acc[item[key]] = item;
+    return acc;
+  }, {});

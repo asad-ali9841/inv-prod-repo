@@ -2314,20 +2314,30 @@ class InventoryRepository {
   }
   async fetchProductForDownload(ids) {
     // If no ids are provided or the ids array is empty, fetch all products.
-    const query =
-      ids && ids.length > 0 ? { sharedAttributes: { $in: ids } } : {};
-    let allProducts = await ItemModel.find(query)
+    const query = ids && ids.length > 0 ? { _id: { $in: ids } } : {};
+    const allProducts = await ItemSharedAttributesModel.find(query)
       .populate([
         {
-          path: "sharedAttributes",
+          path: "variantIds",
           populate: {
-            path: "relatedItems",
-            select: "variantId variantDescription",
+            path: "billOfMaterial.variant_id",
+            model: "Item",
+            select:
+              "variantImages variantDescription supplierPartNumber variantId itemType unitType",
+            populate: {
+              path: "sharedAttributes", // Nested population inside relatedItems
+              select: "supplierId supplierName productId", // Specify fields to include (optional)
+            },
           },
         },
         {
-          path: "billOfMaterial.variant_id",
-          select: "variantId variantDescription",
+          path: "relatedItems",
+          select:
+            "variantImages variantDescription supplierPartNumber variantId itemType",
+          populate: {
+            path: "sharedAttributes", // Nested population inside relatedItems
+            select: "supplierId supplierName productId", // Specify fields to include (optional)
+          },
         },
       ])
       .lean();

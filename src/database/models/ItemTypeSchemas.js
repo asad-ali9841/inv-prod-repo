@@ -8,6 +8,7 @@ const {
   ITEM_STATUS,
   PACKAGING_SUPPLY_TYPE,
   KIT_ASSEMBLY_TYPE,
+  SUPPLIER_STATUSES,
 } = require("../../utils/constants");
 
 const isNotDraft = function () {
@@ -41,7 +42,7 @@ const storageLocationSchema = new mongoose.Schema(
 const billOfMaterialSchema = new mongoose.Schema(
   {
     variant_id: { type: mongoose.Schema.Types.ObjectId, ref: "Item" },
-    quantity: { type: Number, required: true }
+    quantity: { type: Number, required: true },
   },
   { _id: false } // This prevents Mongoose from auto-generating an _id field
 );
@@ -52,7 +53,7 @@ const ProductItemSchema = new Schema({
     type: String,
     unique: true, // Enforce uniqueness
     sparse: true, // Ignore null values
-    set: (value) => (value === "" ? undefined  : value), // Convert empty strings to null
+    set: (value) => (value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -431,8 +432,11 @@ const ProductItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -454,8 +458,11 @@ const ProductItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -1038,8 +1045,11 @@ const PackagingItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -1061,8 +1071,11 @@ const PackagingItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -1331,7 +1344,7 @@ const AssemblyItemSchema = new Schema({
   },
   //* BILL OF MATERIAL
   billOfMaterial: {
-    type: [billOfMaterialSchema]
+    type: [billOfMaterialSchema],
   },
   // * SIZE & COLOR
   // N-R
@@ -1612,8 +1625,11 @@ const AssemblyItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -1635,8 +1651,11 @@ const AssemblyItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -1911,7 +1930,7 @@ const KitItemSchema = new Schema({
   },
   //* BILL OF MATERIAL
   billOfMaterial: {
-    type: [billOfMaterialSchema]
+    type: [billOfMaterialSchema],
   },
   // * SIZE & COLOR
   // N-R
@@ -2192,8 +2211,11 @@ const KitItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -2215,8 +2237,11 @@ const KitItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -2765,8 +2790,11 @@ const MROItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -2788,8 +2816,11 @@ const MROItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -3274,8 +3305,11 @@ const RawMaterialItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -3297,8 +3331,11 @@ const RawMaterialItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -3636,8 +3673,11 @@ const NonInventoryItemSchemaCommon = new Schema({
     validate: {
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,
@@ -3659,8 +3699,11 @@ const NonInventoryItemSchemaCommon = new Schema({
       validator: async function (value) {
         if (!isNotDraft.call(this)) return true;
         if (!value) return true;
-        const supplier = await SupplierModel.findOne({ customId: value });
-        return supplier != null; // Ensure the supplier with this customId exists
+        const supplier = await SupplierModel.findOne({
+          customId: value,
+          status: SUPPLIER_STATUSES.ACTIVE,
+        });
+        return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
         `Supplier with customId ${props.value} does not exist`,

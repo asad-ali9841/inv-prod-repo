@@ -8,13 +8,14 @@ const {
   LOCAL_SECRET_KEY,
 } = require("../config/index");
 const ExcelJS = require("exceljs");
-let converter = require("json-2-csv");
 const {
   camelCaseToNormalText,
   formatValue,
   formatStorageLocations,
   formatRelatedItems,
   formatBillOfMaterial,
+  formatDateFromTimestamp,
+  mapArrayToObject,
 } = require("../utils/index");
 var qs = require("qs");
 const {
@@ -24,11 +25,18 @@ const {
   GetObjectCommand,
 } = require("@aws-sdk/client-s3");
 const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+const {
+  productKeysToLabels,
+  PRODUCT_AND_VARIANT_ARRAY_COLUMNS,
+  PRODUCT_OBJECT_COLUMNS,
+  VARAINT_OBJECT_COLUMNS,
+} = require("../utils/constants");
+const { getActiveWarehouses } = require("../api-calls/inventory-api-calls");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
-    accessKeyId: LOCAL_ACCESS_KEY,
-    secretAccessKey: LOCAL_SECRET_KEY,
+  accessKeyId: LOCAL_ACCESS_KEY,
+  secretAccessKey: LOCAL_SECRET_KEY,
 });
 
 module.exports = (app) => {
@@ -245,107 +253,154 @@ module.exports = (app) => {
 
   app.get("/download/all/v3", async (req, res, next) => {
     try {
-      req.query = {
-        format: "csv",
-        fields: [
-          "variantId",
-          "name",
-          "itemType",
-          "description",
-          "createdAt",
-          "countryOfOrigin",
-          "associatedServices",
-          "storageLocations",
-          "relatedItems",
-          "billOfMaterial",
-        ],
-        items: [],
+      const filterQuery = {
+        format: req.query.format,
+        fields: req.query.fields.split(","),
+        items:
+          req.query.items && req.query.items.length
+            ? req.query.items.split(",")
+            : [],
       };
-      const filterQuery = qs.parse(req.query);
-      const { result, fields } = await service.downloadAll(filterQuery);
-      if (req.query.format === "excel") {
-        const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("Data");
 
-        // Add header row based on the fields array.
-        const headerRow = [];
-        fields.forEach((field) => {
-          if (field === "storageLocations") {
-            headerRow.push(
-              camelCaseToNormalText("storageLocations_locationName")
-            );
-            headerRow.push(
-              camelCaseToNormalText("storageLocations_customName")
-            );
-            headerRow.push(
-              camelCaseToNormalText("storageLocations_maxQtyAtLoc")
-            );
-          } else if (field === "relatedItems") {
-            headerRow.push(camelCaseToNormalText("relatedItems_variantId"));
-            headerRow.push(camelCaseToNormalText("relatedItems_name"));
-          } else if (field === "billOfMaterial") {
-            headerRow.push(camelCaseToNormalText("billOfMaterial_variantId"));
-            headerRow.push(camelCaseToNormalText("billOfMaterial_name"));
-            headerRow.push(camelCaseToNormalText("billOfMaterial_quantity"));
-          } else if (field === "variantDescription") {
-            headerRow.push(camelCaseToNormalText("name"));
+      const activeWHRes = await getActiveWarehouses(req.query.authKey);
+      if (activeWHRes.status != 1 || activeWHRes.type !== "success")
+        throw new Error("Could not fetch active warehouses");
+
+      const activeWarehouses = activeWHRes.data.warehouse;
+      const warehouseKeyToObject = mapArrayToObject(activeWarehouses, "_id");
+      const products = await service.downloadAll(filterQuery);
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Data");
+      const fields = filterQuery.fields;
+
+      // Add header row based on the fields array.
+      const headerRow = [];
+      fields.forEach((field) => {
+        if (field === "variants.storageLocations") {
+          headerRow.push("Warehouse");
+          headerRow.push("Location Name");
+          headerRow.push("Storage Location");
+          headerRow.push("Maximum Storage Quantity");
+        } else if (field === "relatedItems") {
+          headerRow.push(camelCaseToNormalText("relatedItems_variantId"));
+          headerRow.push(camelCaseToNormalText("relatedItems_name"));
+        } else if (field === "billOfMaterial") {
+          headerRow.push(camelCaseToNormalText("billOfMaterial_variantId"));
+          headerRow.push(camelCaseToNormalText("billOfMaterial_name"));
+          headerRow.push(camelCaseToNormalText("billOfMaterial_quantity"));
+        } else {
+          const correctedField = field.startsWith("variants.")
+            ? field.replace(/^variants\./, "")
+            : field;
+          const headerField = productKeysToLabels[correctedField];
+          headerRow.push(headerField);
+        }
+      });
+      worksheet.addRow(headerRow);
+
+      const correctedProducts = [];
+      products.forEach((product) => {
+        const { variantIds, ...productAttributes } = product;
+        variantIds.forEach((variantId) => {
+          const { storageLocations, ...variant } = variantId;
+
+          if (storageLocations && Object.keys(storageLocations).length > 0) {
+            Object.entries(storageLocations).forEach(([whKey, locations]) => {
+              const warehouse = warehouseKeyToObject[whKey]?.name ?? "";
+
+              locations
+                .sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0))
+                .forEach((location) => {
+                  correctedProducts.push({
+                    ...productAttributes,
+                    variant,
+                    storageLocation: {
+                      warehouse,
+                      ...location,
+                    },
+                  });
+                });
+            });
           } else {
-            headerRow.push(camelCaseToNormalText(field));
+            correctedProducts.push({
+              ...productAttributes,
+              variant,
+            });
           }
         });
-        worksheet.addRow(headerRow);
+      });
 
-        // Add a row for each data object.
-        result.forEach((item) => {
-          const row = [];
-          fields.forEach((field) => {
-            if (field === "storageLocations") {
-              const [locationNames, customNames, maxQtyAtLocs] =
-                formatStorageLocations(item[field]);
-              row.push(locationNames, customNames, maxQtyAtLocs);
-            } else if (field === "relatedItems") {
-              const [variantIds, variantDescriptions] = formatRelatedItems(
-                item[field]
-              );
-              row.push(variantIds, variantDescriptions);
-            } else if (field === "billOfMaterial") {
-              const [varIds, varDescriptions, quantities] =
-                formatBillOfMaterial(item[field]);
-              row.push(varIds, varDescriptions, quantities);
+      correctedProducts.forEach((product) => {
+        const row = [];
+        fields.forEach((field) => {
+          const correctedField = field.startsWith("variants.")
+            ? field.replace(/^variants\./, "")
+            : field;
+          const productAttribute = product[correctedField];
+
+          if (correctedField === "storageLocations") {
+            const storageLocation = product.storageLocation;
+
+            if (storageLocation) {
+              row.push(storageLocation.warehouse);
+              row.push(storageLocation.customName);
+              row.push(storageLocation.locationName);
+              row.push(storageLocation.maxQtyAtLoc);
             } else {
-              row.push(formatValue(item[field]));
+              for (let i = 0; i < 4; i++) row.push("");
             }
-          });
-          worksheet.addRow(row);
+          } else if (field.startsWith("variants.")) {
+            const variantAttribute = product.variant[correctedField];
+            if (PRODUCT_AND_VARIANT_ARRAY_COLUMNS.includes(correctedField)) {
+              row.push(variantAttribute ? variantAttribute.join(", ") : "");
+            } else if (VARAINT_OBJECT_COLUMNS.includes(correctedField)) {
+              row.push(variantAttribute ? variantAttribute.label : "");
+            } else {
+              row.push(variantAttribute ?? "");
+            }
+          } else {
+            if (PRODUCT_AND_VARIANT_ARRAY_COLUMNS.includes(correctedField)) {
+              row.push(productAttribute ? productAttribute.join(", ") : "");
+            } else if (PRODUCT_OBJECT_COLUMNS.includes(correctedField)) {
+              row.push(productAttribute ? productAttribute.label : "");
+            } else if (["createdAt", "updatedAt"].includes(correctedField)) {
+              row.push(
+                formatDateFromTimestamp(productAttribute, "YYYY-MM-DD", "-")
+              );
+            } else if (correctedField === "itemType1") {
+              row.push(productAttribute.replace(/Common$/, ""));
+            } else {
+              row.push(productAttribute ?? "");
+            }
+          }
         });
 
+        worksheet.addRow(row);
+      });
+
+      if (filterQuery.format === "excel") {
         // Set headers for file download
         res.setHeader(
           "Content-Type",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         );
-        res.setHeader(
-          "Content-Disposition",
-          "attachment; filename=products.xlsx"
-        );
+        res.setHeader("Content-Disposition", "attachment; filename=items.xlsx");
 
         // Write the file to the response
         await workbook.xlsx.write(res);
         res.status(200).end();
       } else {
-        const transformedData = result.map((item) =>
-          transformRecord(item, fields)
-        );
-        const csv = await converter.json2csv(transformedData);
         // Set headers for CSV download
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
           "Content-Disposition",
-          "attachment; filename=products.csv"
+          "attachment; filename=items.csv"
         );
 
-        // Send the CSV file
-        res.status(200).send(csv);
+        // Write the file to the response
+        await workbook.csv.write(res);
+        res.status(200).end();
       }
     } catch (error) {
       next(error);

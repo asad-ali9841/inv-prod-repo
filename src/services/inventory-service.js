@@ -115,7 +115,7 @@ class InventoryService {
       sortOptions,
       authKey
     );
-    console.log(fetchedItemList)
+    console.log(fetchedItemList);
     if (fetchedItemList)
       return apiPayloadFormat(
         1,
@@ -227,7 +227,7 @@ class InventoryService {
   }
 
   async getManyByVId(idArray) {
-    console.log(idArray)
+    console.log(idArray);
     const allFetched = await this.respository.getManyProductsUsingVId(
       JSON.parse(idArray)
     );
@@ -325,7 +325,12 @@ class InventoryService {
         // location adding error
         await session.abortTransaction();
         session.endSession();
-        return apiPayloadFormat(0, "error", "Error adding locations", assignedLoc);
+        return apiPayloadFormat(
+          0,
+          "error",
+          "Error adding locations",
+          assignedLoc
+        );
       }
     }
     return updated;
@@ -1630,13 +1635,12 @@ class InventoryService {
         "capacityWidth",
         "capacityHeight",
       ],
-      sharedColumns: [
-      ],
+      sharedColumns: [],
       page: 1,
       limit: 100,
       filters: {
-         itemType: "PackagingSupplies",
-         status: "active"
+        itemType: "PackagingSupplies",
+        status: "active",
       },
     };
     const filterQuery = qs.parse(queryParams);
@@ -1644,13 +1648,12 @@ class InventoryService {
     const page = parseInt(filterQuery.page) || 1;
     const limit = parseInt(filterQuery.limit) || 10;
     const { filters, itemColumns } = filterQuery;
-    
 
     const fetchedProducts = await this.respository.fetchProductsDBByQueryV3(
       page,
       limit,
       itemColumns,
-      filters,
+      filters
     );
     if (fetchedProducts)
       return apiPayloadFormat(
@@ -1980,22 +1983,14 @@ class InventoryService {
       );
     return apiPayloadFormat(1, "error", "No products found", [], "");
   }
-  
+
   async downloadAll(payload) {
-    const { items, fields } = payload;
-    let products = await this.respository.fetchProductForDownload(items);
-    // updating name with variantDescription
-    if (fields.includes("name")) {
-      const index = fields.indexOf("name");
-      fields.splice(index, 1, "variantDescription");
-    }
-    const result = transformData(products, fields);
-    return { result, fields };
+    const { items } = payload;
+    const products = await this.respository.fetchProductForDownload(items);
+
+    return products;
   }
-
 }
-
-  
 
 // create loactions to write to Db
 async function assignQtyToLocations(createdVariants, authKey) {
@@ -2028,13 +2023,5 @@ async function assignQtyToLocations(createdVariants, authKey) {
   if (result.length === 0) return { status: 1 };
   return await addQtyToLoc(authKey, result);
 }
-
-const transformData = (data, fields) => {
-  return data.map((item) => {
-    // Merge top-level properties and sharedAttributes
-    const merged = { ...item, ...(item.sharedAttributes || {}) };
-    return _.pick(merged, fields);
-  });
-};
 
 module.exports = InventoryService;
