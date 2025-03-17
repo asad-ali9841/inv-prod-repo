@@ -439,7 +439,7 @@ const ProductItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -465,7 +465,7 @@ const ProductItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
@@ -1052,7 +1052,7 @@ const PackagingItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -1078,7 +1078,7 @@ const PackagingItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
@@ -1632,7 +1632,7 @@ const AssemblyItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -1658,7 +1658,7 @@ const AssemblyItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
@@ -2218,7 +2218,7 @@ const KitItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -2244,7 +2244,7 @@ const KitItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
@@ -2797,7 +2797,7 @@ const MROItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -2823,7 +2823,7 @@ const MROItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
@@ -3312,7 +3312,7 @@ const RawMaterialItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -3338,7 +3338,7 @@ const RawMaterialItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
@@ -3680,7 +3680,7 @@ const NonInventoryItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Required when not draft
@@ -3706,7 +3706,7 @@ const NonInventoryItemSchemaCommon = new Schema({
         return Boolean(supplier); // Ensure the supplier with this customId exists
       },
       message: (props) =>
-        `Supplier with customId ${props.value} does not exist`,
+        `Active supplier with customId ${props.value} does not exist`,
     },
   },
   // Not Required
