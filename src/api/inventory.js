@@ -672,4 +672,9 @@ module.exports = (app) => {
     const deleted = await service.deleteVariant(req.query.variantId, req.user);
     return res.json(deleted);
   });
+
+  app.put("/variant/inventoryadjustment", userAuth, async (req, res) => {
+    const result = await service.performInventoryAdjustment(req.body, req.user);
+    return res.json(result);
+  });
 };
