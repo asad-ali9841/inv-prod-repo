@@ -36,6 +36,10 @@ const storageLocationSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    itemQuantity: {
+      type: Number,
+      default: 0,
+    },
   },
   { _id: false }
 );

@@ -1784,6 +1784,7 @@ class InventoryService {
   }
 
   async addBulkProductsV3(bulkPayloads, userInfo, authKey) {
+    
     // Start one Mongoose session/transaction for all products.
     const session = await mongoose.startSession();
     session.startTransaction();

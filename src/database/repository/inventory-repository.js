@@ -1556,6 +1556,37 @@ class InventoryRepository {
   }
 
   async updateItemSharedStatusV3(itemSharedKey, newStatus, userInfo) {
+    // let updateSchemaQuery = ItemModel.updateMany(
+    //       {},
+    //       [
+    //         {
+    //           $set: {
+    //             storageLocations: {
+    //               $arrayToObject: {
+    //                 $map: {
+    //                   input: { $objectToArray: "$storageLocations" },
+    //                   as: "loc",
+    //                   in: {
+    //                     k: "$$loc.k",
+    //                     v: {
+    //                       $map: {
+    //                         input: "$$loc.v",
+    //                         as: "location",
+    //                         in: {
+    //                           $mergeObjects: [ { itemQuantity: 0 }, "$$location" ]
+    //                         }
+    //                       }
+    //                     }
+    //                   }
+    //                 }
+    //               }
+    //             }
+    //           }
+    //         }
+    //       ]
+    //     );
+       
+    // return await updateSchemaQuery.exec();
     // Start a Mongoose session for transaction
     const session = await mongoose.startSession();
 
