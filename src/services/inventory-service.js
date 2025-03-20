@@ -1692,6 +1692,7 @@ class InventoryService {
         }
       }
     }
+  
     // fetching locations using Id
     let locationsData = await getLocationsByIds(authKey, locationIds);
     if (locationsData.status === 0)
