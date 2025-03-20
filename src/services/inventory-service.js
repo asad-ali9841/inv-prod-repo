@@ -2011,6 +2011,36 @@ class InventoryService {
       );
     }
   }
+
+  async performInventoryTransfer(payload, userInfo, authKey) {
+    try {
+      const activity = createAcitivityLog(
+        userInfo,
+        `Inventory transfer generated for ${payload.variantId}`,
+        ITEM_STATUS.active,
+        []
+      );
+
+      const result = await this.respository.performInventoryTransfer(
+        payload,
+        activity,
+        authKey
+      );
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Inventory transfer generated",
+        result
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error generating transfer: ${error.message}`,
+        []
+      );
+    }
+  }
 }
 
 // create loactions to write to Db

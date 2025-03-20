@@ -40,7 +40,11 @@ const {
 } = require("../../utils/constants");
 const { DOMImplementation, XMLSerializer } = require("xmldom");
 
-const { getActiveWarehouses } = require("../../api-calls/inventory-api-calls");
+const {
+  getActiveWarehouses,
+  createPickingTask,
+  createPutawayTask,
+} = require("../../api-calls/inventory-api-calls");
 
 const xmlSerializer = new XMLSerializer();
 const document = new DOMImplementation().createDocument(
@@ -2430,6 +2434,100 @@ class InventoryRepository {
       await session.abortTransaction();
       session.endSession();
       console.error("Error performing inventory adjustment:", error);
+      throw error;
+    }
+  }
+
+  async performInventoryTransfer(payload, activity, authKey) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      const {
+        variantId,
+        productId,
+        storageLocations,
+        comment,
+        fromLocation,
+        toLocations,
+        variant_id,
+      } = payload;
+
+      const product = await ItemSharedAttributesModel.findOneAndUpdate(
+        { _id: productId },
+        {
+          $set: { updatedAt: Date.now() },
+          $push: { activity },
+        },
+        { new: true, session }
+      );
+
+      if (!product) throw new Error("Product not found");
+
+      const variant = await ItemModel.findOne({ variantId }).session(session);
+
+      if (!variant) throw new Error("Variant not found");
+
+      // Update fields
+      variant.storageLocations = storageLocations;
+      variant.updatedAt = Date.now();
+
+      // Push activity
+      variant.activity.push(activity);
+
+      // Save the updated variant
+      await variant.save({ session });
+
+      // Create transfer tasks in parallel
+      const toWarehouses = Object.keys(toLocations);
+
+      await Promise.all(
+        toWarehouses.map(async (warehouseId) => {
+          if (fromLocation.warehouseId === warehouseId) {
+            const res = await createPickingTask(authKey, {
+              variant_id,
+              fromLocation,
+              toLocations: toLocations[warehouseId],
+              comment,
+            });
+
+            if (res.status !== 1) throw new Error(res.responseMessage);
+          } else {
+            const res = await createPutawayTask(authKey, {
+              receivingWhId: warehouseId,
+              variant_id,
+              fromLocation,
+              toLocations: toLocations[warehouseId],
+              comment,
+            });
+
+            if (res.status !== 1) throw new Error(res.responseMessage);
+          }
+        })
+      );
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+
+      return {
+        product: {
+          _id: product._id,
+          updatedAt: product.updatedAt,
+          activity: product.activity,
+        },
+        variant: {
+          _id: variant._id,
+          variantId: variant.variantId,
+          storageLocations: variant.storageLocations,
+          updatedAt: variant.updatedAt,
+          activity: variant.activity,
+        },
+      };
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error("Error generating inventory transfer:", error);
       throw error;
     }
   }
