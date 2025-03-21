@@ -672,4 +672,18 @@ module.exports = (app) => {
     const deleted = await service.deleteVariant(req.query.variantId, req.user);
     return res.json(deleted);
   });
+
+  app.put("/variant/inventoryadjustment", userAuth, async (req, res) => {
+    const result = await service.performInventoryAdjustment(req.body, req.user);
+    return res.json(result);
+  });
+
+  app.put("/variant/inventorytransfer", userAuth, async (req, res) => {
+    const result = await service.performInventoryTransfer(
+      req.body,
+      req.user,
+      req.get("Authorization")
+    );
+    return res.json(result);
+  });
 };
