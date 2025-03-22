@@ -113,7 +113,7 @@ module.exports.createPickingTask = async (authKey, taskData) => {
   let config = {
     method: "post",
     maxBodyLength: Infinity,
-    url: `${Routes.userService}/locations/addquantity`,
+    url: `${Routes.userService}/tasks/picking/create/invtran`,
     headers: {
       Authorization: authKey,
       "Content-Type": "application/json",
@@ -137,7 +137,7 @@ module.exports.createPutawayTask = async (authKey, taskData) => {
   let config = {
     method: "post",
     maxBodyLength: Infinity,
-    url: `${Routes.userService}/locations/addquantity`,
+    url: `${Routes.userService}/tasks/putaway/create/invtran`,
     headers: {
       Authorization: authKey,
       "Content-Type": "application/json",
