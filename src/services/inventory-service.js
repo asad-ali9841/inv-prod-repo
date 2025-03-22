@@ -115,17 +115,15 @@ class InventoryService {
       sortOptions,
       authKey
     );
-    console.log(fetchedItemList);
     if (fetchedItemList)
       return apiPayloadFormat(
         1,
         "success",
         "Item List fetched successfully",
-        fetchedItemList,
-        ""
+        fetchedItemList
       );
 
-    return apiPayloadFormat(1, "error", "No Items found", [], "");
+    return apiPayloadFormat(1, "error", "No Items found", []);
   }
 
   /*
@@ -1785,7 +1783,6 @@ class InventoryService {
   }
 
   async addBulkProductsV3(bulkPayloads, userInfo, authKey) {
-    
     // Start one Mongoose session/transaction for all products.
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -1980,10 +1977,9 @@ class InventoryService {
         1,
         "success",
         "Products fetched successfully",
-        fetchedProducts,
-        ""
+        fetchedProducts
       );
-    return apiPayloadFormat(1, "error", "No products found", [], "");
+    return apiPayloadFormat(0, "error", "No products found", []);
   }
 
   async downloadAll(payload) {
@@ -1991,6 +1987,60 @@ class InventoryService {
     const products = await this.respository.fetchProductForDownload(items);
 
     return products;
+  }
+
+  async performInventoryAdjustment(payload, userInfo) {
+    try {
+      const activity = createAcitivityLog(
+        userInfo,
+        `Inventory adjusted for ${payload.variantId}`,
+        ITEM_STATUS.active,
+        []
+      );
+
+      const result = await this.respository.performInventoryAdjustment(
+        payload,
+        activity
+      );
+      return apiPayloadFormat(1, "success", "Inventory adjusted", result);
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error performing adjustment: ${error.message}`,
+        []
+      );
+    }
+  }
+
+  async performInventoryTransfer(payload, userInfo, authKey) {
+    try {
+      const activity = createAcitivityLog(
+        userInfo,
+        `Inventory transfer generated for ${payload.variantId}`,
+        ITEM_STATUS.active,
+        []
+      );
+
+      const result = await this.respository.performInventoryTransfer(
+        payload,
+        activity,
+        authKey
+      );
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Inventory transfer generated",
+        result
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error generating transfer: ${error.message}`,
+        []
+      );
+    }
   }
 }
 
