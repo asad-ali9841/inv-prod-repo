@@ -152,7 +152,7 @@ module.exports = (app) => {
     try {
       // Use the DeleteObjectCommand
       const command = new DeleteObjectCommand(params);
-      await s3.send(command); // Await the send method
+      let abc = await s3.send(command); // Await the send method
       return res.json({
         status: 1,
         type: "success",
