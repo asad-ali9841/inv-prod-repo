@@ -115,17 +115,15 @@ class InventoryService {
       sortOptions,
       authKey
     );
-    console.log(fetchedItemList)
     if (fetchedItemList)
       return apiPayloadFormat(
         1,
         "success",
         "Item List fetched successfully",
-        fetchedItemList,
-        ""
+        fetchedItemList
       );
 
-    return apiPayloadFormat(1, "error", "No Items found", [], "");
+    return apiPayloadFormat(1, "error", "No Items found", []);
   }
 
   /*
@@ -227,7 +225,7 @@ class InventoryService {
   }
 
   async getManyByVId(idArray) {
-    console.log(idArray)
+    console.log(idArray);
     const allFetched = await this.respository.getManyProductsUsingVId(
       JSON.parse(idArray)
     );
@@ -325,7 +323,12 @@ class InventoryService {
         // location adding error
         await session.abortTransaction();
         session.endSession();
-        return apiPayloadFormat(0, "error", "Error adding locations", assignedLoc);
+        return apiPayloadFormat(
+          0,
+          "error",
+          "Error adding locations",
+          assignedLoc
+        );
       }
     }
     return updated;
@@ -1630,13 +1633,12 @@ class InventoryService {
         "capacityWidth",
         "capacityHeight",
       ],
-      sharedColumns: [
-      ],
+      sharedColumns: [],
       page: 1,
       limit: 100,
       filters: {
-         itemType: "PackagingSupplies",
-         status: "active"
+        itemType: "PackagingSupplies",
+        status: "active",
       },
     };
     const filterQuery = qs.parse(queryParams);
@@ -1644,13 +1646,12 @@ class InventoryService {
     const page = parseInt(filterQuery.page) || 1;
     const limit = parseInt(filterQuery.limit) || 10;
     const { filters, itemColumns } = filterQuery;
-    
 
     const fetchedProducts = await this.respository.fetchProductsDBByQueryV3(
       page,
       limit,
       itemColumns,
-      filters,
+      filters
     );
     if (fetchedProducts)
       return apiPayloadFormat(
@@ -1689,6 +1690,7 @@ class InventoryService {
         }
       }
     }
+  
     // fetching locations using Id
     let locationsData = await getLocationsByIds(authKey, locationIds);
     if (locationsData.status === 0)
@@ -1975,27 +1977,72 @@ class InventoryService {
         1,
         "success",
         "Products fetched successfully",
-        fetchedProducts,
-        ""
+        fetchedProducts
       );
-    return apiPayloadFormat(1, "error", "No products found", [], "");
+    return apiPayloadFormat(0, "error", "No products found", []);
   }
-  
+
   async downloadAll(payload) {
-    const { items, fields } = payload;
-    let products = await this.respository.fetchProductForDownload(items);
-    // updating name with variantDescription
-    if (fields.includes("name")) {
-      const index = fields.indexOf("name");
-      fields.splice(index, 1, "variantDescription");
-    }
-    const result = transformData(products, fields);
-    return { result, fields };
+    const { items } = payload;
+    const products = await this.respository.fetchProductForDownload(items);
+
+    return products;
   }
 
-}
+  async performInventoryAdjustment(payload, userInfo) {
+    try {
+      const activity = createAcitivityLog(
+        userInfo,
+        `Inventory adjusted for ${payload.variantId}`,
+        ITEM_STATUS.active,
+        []
+      );
 
-  
+      const result = await this.respository.performInventoryAdjustment(
+        payload,
+        activity
+      );
+      return apiPayloadFormat(1, "success", "Inventory adjusted", result);
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error performing adjustment: ${error.message}`,
+        []
+      );
+    }
+  }
+
+  async performInventoryTransfer(payload, userInfo, authKey) {
+    try {
+      const activity = createAcitivityLog(
+        userInfo,
+        `Inventory transfer generated for ${payload.variantId}`,
+        ITEM_STATUS.active,
+        []
+      );
+
+      const result = await this.respository.performInventoryTransfer(
+        payload,
+        activity,
+        authKey
+      );
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Inventory transfer generated",
+        result
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error generating transfer: ${error.message}`,
+        []
+      );
+    }
+  }
+}
 
 // create loactions to write to Db
 async function assignQtyToLocations(createdVariants, authKey) {
@@ -2028,13 +2075,5 @@ async function assignQtyToLocations(createdVariants, authKey) {
   if (result.length === 0) return { status: 1 };
   return await addQtyToLoc(authKey, result);
 }
-
-const transformData = (data, fields) => {
-  return data.map((item) => {
-    // Merge top-level properties and sharedAttributes
-    const merged = { ...item, ...(item.sharedAttributes || {}) };
-    return _.pick(merged, fields);
-  });
-};
 
 module.exports = InventoryService;

@@ -65,6 +65,7 @@ module.exports.getActiveWarehouses = async (authKey) => {
 };
 module.exports.getLocationsByIds = async (authKey, ids) => {
   let ar = JSON.stringify(ids);
+  console.log("BASE URL",baseURL);
   let config = {
     method: "get",
     maxBodyLength: Infinity,
@@ -95,6 +96,54 @@ module.exports.addQtyToLoc = async (authKey, locData) => {
       "Content-Type": "application/json",
     },
     data: JSON.stringify(locData),
+  };
+
+  return axios
+    .request(config)
+    .then((response) => {
+      console.log(response.data);
+      return response.data;
+    })
+    .catch((error) => {
+      //console.log(error);
+      throw error;
+    });
+};
+
+module.exports.createPickingTask = async (authKey, taskData) => {
+  let config = {
+    method: "post",
+    maxBodyLength: Infinity,
+    url: `${Routes.userService}/locations/addquantity`,
+    headers: {
+      Authorization: authKey,
+      "Content-Type": "application/json",
+    },
+    data: JSON.stringify(taskData),
+  };
+
+  return axios
+    .request(config)
+    .then((response) => {
+      console.log(response.data);
+      return response.data;
+    })
+    .catch((error) => {
+      //console.log(error);
+      throw error;
+    });
+};
+
+module.exports.createPutawayTask = async (authKey, taskData) => {
+  let config = {
+    method: "post",
+    maxBodyLength: Infinity,
+    url: `${Routes.userService}/locations/addquantity`,
+    headers: {
+      Authorization: authKey,
+      "Content-Type": "application/json",
+    },
+    data: JSON.stringify(taskData),
   };
 
   return axios
