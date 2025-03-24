@@ -42,8 +42,7 @@ const { DOMImplementation, XMLSerializer } = require("xmldom");
 
 const {
   getActiveWarehouses,
-  createPickingTask,
-  createPutawayTask,
+  createInventoryTransferTasks,
 } = require("../../api-calls/inventory-api-calls");
 
 const xmlSerializer = new XMLSerializer();
@@ -2447,7 +2446,6 @@ class InventoryRepository {
         comment,
         fromLocation,
         toLocations,
-        variant_id,
       } = payload;
 
       const product = await ItemSharedAttributesModel.findOneAndUpdate(
@@ -2475,33 +2473,17 @@ class InventoryRepository {
       // Save the updated variant
       await variant.save({ session });
 
-      // Create transfer tasks in parallel
-      const toWarehouses = Object.keys(toLocations);
+      // Uncomment to create tasks for the transfer
 
-      await Promise.all(
-        toWarehouses.map(async (warehouseId) => {
-          if (fromLocation.warehouseId === warehouseId) {
-            const res = await createPickingTask(authKey, {
-              variant_id,
-              fromLocation,
-              toLocations: toLocations[warehouseId],
-              comment,
-            });
+      // const res = await createInventoryTransferTasks(authKey, {
+      //   variantId,
+      //   warehouseId: fromLocation.warehouseId,
+      //   pickingLocation: fromLocation?.location_Id,
+      //   droppingLocations: toLocations,
+      //   comment,
+      // });
 
-            if (res.status !== 1) throw new Error(res.responseMessage);
-          } else {
-            const res = await createPutawayTask(authKey, {
-              receivingWhId: warehouseId,
-              variant_id,
-              fromLocation,
-              toLocations: toLocations[warehouseId],
-              comment,
-            });
-
-            if (res.status !== 1) throw new Error(res.responseMessage);
-          }
-        })
-      );
+      // if (res.status !== 1) throw new Error(res.responseMessage);
 
       // Commit the transaction
       await session.commitTransaction();

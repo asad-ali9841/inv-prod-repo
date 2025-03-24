@@ -65,7 +65,7 @@ module.exports.getActiveWarehouses = async (authKey) => {
 };
 module.exports.getLocationsByIds = async (authKey, ids) => {
   let ar = JSON.stringify(ids);
-  console.log("BASE URL",baseURL);
+  console.log("BASE URL", baseURL);
   let config = {
     method: "get",
     maxBodyLength: Infinity,
@@ -110,35 +110,11 @@ module.exports.addQtyToLoc = async (authKey, locData) => {
     });
 };
 
-module.exports.createPickingTask = async (authKey, taskData) => {
+module.exports.createInventoryTransferTasks = async (authKey, taskData) => {
   let config = {
     method: "post",
     maxBodyLength: Infinity,
     url: `${Routes.userService}/tasks/picking/create/invtran`,
-    headers: {
-      Authorization: authKey,
-      "Content-Type": "application/json",
-    },
-    data: JSON.stringify(taskData),
-  };
-
-  return axios
-    .request(config)
-    .then((response) => {
-      console.log(response.data);
-      return response.data;
-    })
-    .catch((error) => {
-      //console.log(error);
-      throw error;
-    });
-};
-
-module.exports.createPutawayTask = async (authKey, taskData) => {
-  let config = {
-    method: "post",
-    maxBodyLength: Infinity,
-    url: `${Routes.userService}/tasks/putaway/create/invtran`,
     headers: {
       Authorization: authKey,
       "Content-Type": "application/json",
