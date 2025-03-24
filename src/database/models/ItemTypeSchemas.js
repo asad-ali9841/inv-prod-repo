@@ -57,7 +57,7 @@ const ProductItemSchema = new Schema({
     type: String,
     unique: true, // Enforce uniqueness
     sparse: true, // Ignore null values
-    set: (value) => (value === "" ? undefined : value), // Convert empty strings to null
+    set: (value) => (value == null || value === "" ? undefined : value),
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
