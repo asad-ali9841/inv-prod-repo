@@ -57,6 +57,7 @@ const svgNode = document.createElementNS(
   "svg"
 );
 const JsBarcode = require("jsbarcode");
+const Item = require("../models/Item");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -1276,6 +1277,13 @@ class InventoryRepository {
 
   async fetchProductByKeyV3(key) {
     try {
+      //TYPE 1 = "Products"
+      // Products.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
+      //await ItemModel.collection.dropIndex("name_1");
+      // await ItemModel.syncIndexes();
+      // ItemModel.collection.indexes().then((indexes) => console.log("AFTER",indexes))
+
+
       const prodData = await ItemSharedAttributesModel.findById(key)
         .populate([
           {

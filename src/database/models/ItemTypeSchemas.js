@@ -55,8 +55,8 @@ const ProductItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
     set: (value) => (value == null || value === "" ? undefined : value),
     validate: {
       validator: function (value) {
@@ -367,7 +367,7 @@ const ProductItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
@@ -659,9 +659,9 @@ const PackagingItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -992,7 +992,7 @@ const PackagingItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   shortName: {
     type: String,
@@ -1250,9 +1250,9 @@ const AssemblyItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -1560,7 +1560,7 @@ const AssemblyItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
@@ -1830,9 +1830,9 @@ const KitItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -2146,7 +2146,7 @@ const KitItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
@@ -2415,9 +2415,9 @@ const MROItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -2725,7 +2725,7 @@ const MROItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
@@ -2938,9 +2938,9 @@ const RawMaterialItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -3248,7 +3248,7 @@ const RawMaterialItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
@@ -3495,9 +3495,9 @@ const NonInventoryItemSchema = new Schema({
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -3642,7 +3642,7 @@ const NonInventoryItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
@@ -3761,14 +3761,15 @@ const NonInventoryItemSchemaCommon = new Schema({
     },
   },
 });
+
 const PhantomItemSchema = new Schema({
   // * ITEM IDENTIFICATION
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
-    unique: true, // Enforce uniqueness
-    sparse: true, // Ignore null values
-    set: (value) => (value === "" ? null : value), // Convert empty strings to null
+    //unique: true, // Enforce uniqueness
+    //sparse: true, // Ignore null values
+    set: (value) => (value == null || value === "" ? undefined : value), // Convert empty strings to null
     validate: {
       validator: function (value) {
         // Allow null or enforce format for non-empty SKUs
@@ -3832,7 +3833,7 @@ const PhantomItemSchemaCommon = new Schema({
   name: {
     type: String,
     required: true,
-    unique: true,
+    //unique: true,
   },
   // Required only when not draft
   description: {
