@@ -261,6 +261,21 @@ const productKeysToLabels = Object.fromEntries(
   ])
 );
 
+const VALID_BARCODE_TYPES = [
+  "azteccode",
+  "code39",
+  "code128",
+  "datamatrix",
+  "ean8",
+  "ean13",
+  "gs1-128",
+  "interleaved2of5",
+  "pdf417",
+  "upca",
+  "upce",
+  "qrcode",
+];
+
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
   NEW_VARIANT_STATUS_FROM_NEW_PRODUCT_STATUS,
@@ -277,4 +292,5 @@ module.exports = {
   productLabelsToKeys,
   productKeysToLabels,
   PRODUCT_AND_VARIANT_ARRAY_COLUMNS,
+  VALID_BARCODE_TYPES,
 };
