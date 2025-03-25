@@ -62,7 +62,7 @@ module.exports.changeNameToKey = (name) => {
   return name.replace(/\s+/g, "-");
 };
 
-module.exports.createAcitivityLog = (
+module.exports.createActivityLog = (
   userInfo,
   description,
   status,

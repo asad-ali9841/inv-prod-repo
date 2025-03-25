@@ -25,7 +25,7 @@ const {
 } = require("../models/index"); // Adjust the path to where your User model is located
 const mongoose = require("mongoose");
 const {
-  createAcitivityLog,
+  createActivityLog,
   createBarcode,
   deleteImagesFromS3,
   duplicateS3Images,
@@ -42,8 +42,7 @@ const { DOMImplementation, XMLSerializer } = require("xmldom");
 
 const {
   getActiveWarehouses,
-  createPickingTask,
-  createPutawayTask,
+  createInventoryTransferTasks,
 } = require("../../api-calls/inventory-api-calls");
 
 const xmlSerializer = new XMLSerializer();
@@ -668,7 +667,6 @@ class InventoryRepository {
     for (const [key, value] of Object.entries(filters)) {
       query[key] = { $in: value };
     }
-    console.log("QUERY", query);
     // Projection to exclude sensitive fields
     let projection = {
       ...columnsJson,
@@ -724,7 +722,6 @@ class InventoryRepository {
       // }
     }
 
-    console.log("QUERY", query);
     // Projection to inxclude sensitive fields
     let projection = {
       _id: 1,
@@ -1096,7 +1093,6 @@ class InventoryRepository {
   async saveProductToDBV3(payload, variantsData, session) {
     try {
       let { itemType } = payload;
-      console.log(itemType);
       const SharedModel = sharedModelLookup[itemType];
       const VariantModel = variantModelLookup[itemType];
       if (!SharedModel || !VariantModel) {
@@ -1377,7 +1373,7 @@ class InventoryRepository {
       }
 
       // 2. Create activity log for the parent update
-      const activity = createAcitivityLog(
+      const activity = createActivityLog(
         userInfo,
         "Product Updated",
         [payload.status || fetchItemShared.status, "updated"], // or any status changes you want to record
@@ -1619,7 +1615,7 @@ class InventoryRepository {
       }
 
       // 2. Create activity log for the ItemShared status update
-      const itemSharedActivity = createAcitivityLog(
+      const itemSharedActivity = createActivityLog(
         userInfo,
         "Product Status Updated", // or your custom label
         newStatus,
@@ -1656,7 +1652,7 @@ class InventoryRepository {
           bulkItems.find({ _id: itemId }).updateOne({
             $set: { status: newItemStatus },
             $push: {
-              activity: createAcitivityLog(
+              activity: createActivityLog(
                 userInfo,
                 "Item Status Updated",
                 newItemStatus,
@@ -1752,7 +1748,7 @@ class InventoryRepository {
       const newProductId = generateNextProductId(previousId);
 
       // Create activity log for the product duplication
-      const productActivity = createAcitivityLog(
+      const productActivity = createActivityLog(
         userInfo,
         `Product Duplicated from ${originalProduct.productId}`,
         "draft",
@@ -1799,7 +1795,7 @@ class InventoryRepository {
 
         // Generate a new unique variantId
         const newVariantId = `${newProductId}${i + 1}`;
-        const variantActivity = createAcitivityLog(
+        const variantActivity = createActivityLog(
           userInfo,
           "Product Variant Duplicated",
           "draft",
@@ -2059,7 +2055,7 @@ class InventoryRepository {
       const query = variantKey ? { _id: variantKey } : { variantId };
 
       // Create activity log
-      const variantActivity = createAcitivityLog(
+      const variantActivity = createActivityLog(
         userInfo,
         `Updated Status to ${status}`,
         status,
@@ -2095,7 +2091,7 @@ class InventoryRepository {
         throw new Error(`No product found for variant: ${variantId}`);
       }
 
-      const productActivity = createAcitivityLog(
+      const productActivity = createActivityLog(
         userInfo,
         `Variant ${variantId} updated to ${status} status`,
         product.status,
@@ -2203,14 +2199,14 @@ class InventoryRepository {
       const barcodeSvg = xmlSerializer.serializeToString(svgNode);
 
       // Create activities
-      const variantActivity = createAcitivityLog(
+      const variantActivity = createActivityLog(
         userInfo,
         `Variant duplicated from ${variantId}`,
         "draft",
         []
       );
 
-      const productActivity = createAcitivityLog(
+      const productActivity = createActivityLog(
         userInfo,
         `Variant duplicated from ${variantId}`,
         product.status,
@@ -2310,7 +2306,7 @@ class InventoryRepository {
         deletedVariant.sharedAttributes
       ).session(session);
 
-      const activityLog = createAcitivityLog(
+      const activityLog = createActivityLog(
         userInfo,
         `Deleted variant ${variantId}`,
         product.status,
@@ -2458,7 +2454,6 @@ class InventoryRepository {
         comment,
         fromLocation,
         toLocations,
-        variant_id,
       } = payload;
 
       const product = await ItemSharedAttributesModel.findOneAndUpdate(
@@ -2486,33 +2481,17 @@ class InventoryRepository {
       // Save the updated variant
       await variant.save({ session });
 
-      // Create transfer tasks in parallel
-      const toWarehouses = Object.keys(toLocations);
+      // Uncomment to create tasks for the transfer
 
-      await Promise.all(
-        toWarehouses.map(async (warehouseId) => {
-          if (fromLocation.warehouseId === warehouseId) {
-            const res = await createPickingTask(authKey, {
-              variant_id,
-              fromLocation,
-              toLocations: toLocations[warehouseId],
-              comment,
-            });
+      // const res = await createInventoryTransferTasks(authKey, {
+      //   variantId,
+      //   warehouseId: fromLocation.warehouseId,
+      //   pickingLocation: fromLocation?.location_Id,
+      //   droppingLocations: toLocations,
+      //   comment,
+      // });
 
-            if (res.status !== 1) throw new Error(res.responseMessage);
-          } else {
-            const res = await createPutawayTask(authKey, {
-              receivingWhId: warehouseId,
-              variant_id,
-              fromLocation,
-              toLocations: toLocations[warehouseId],
-              comment,
-            });
-
-            if (res.status !== 1) throw new Error(res.responseMessage);
-          }
-        })
-      );
+      // if (res.status !== 1) throw new Error(res.responseMessage);
 
       // Commit the transaction
       await session.commitTransaction();
@@ -2804,7 +2783,7 @@ async function updateOldItems(changedItems, userInfo, session) {
 
       // Add an update activity
       itemDoc.activity.push(
-        createAcitivityLog(userInfo, "Item Updated", ["active", "updated"], [])
+        createActivityLog(userInfo, "Item Updated", ["active", "updated"], [])
       );
 
       // Save changes
@@ -2840,7 +2819,7 @@ async function createNewItems(
 
     // Create activity
     const activity = [
-      createAcitivityLog(userInfo, "Item Created", ["active"], []),
+      createActivityLog(userInfo, "Item Created", ["active"], []),
     ];
 
     // Construct the new Item
@@ -2883,7 +2862,7 @@ async updateProductDB(productKey, payload, userInfo, session) {
       }
 
       // Create activity log for the product update
-      const activity = createAcitivityLog(
+      const activity = createActivityLog(
         userInfo,
         "Product Updated",
         [payload.status, "updated"],
@@ -3093,7 +3072,7 @@ async updateProductDB(productKey, payload, userInfo, session) {
       }
 
       // Update product status and activity in a single query
-      const productActivity = createAcitivityLog(
+      const productActivity = createActivityLog(
         userInfo,
         "Product Status Updated",
         newStatus,
@@ -3120,7 +3099,7 @@ async updateProductDB(productKey, payload, userInfo, session) {
         bulkVariants.find({ _id: variantId }).updateOne({
           $set: { status: newVariantStatus },
           $push: {
-            activity: createAcitivityLog(
+            activity: createActivityLog(
               userInfo,
               "Variant Status Updated",
               newVariantStatus,
