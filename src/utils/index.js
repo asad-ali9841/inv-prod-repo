@@ -543,3 +543,13 @@ module.exports.mapArrayToObject = (array, key) =>
     acc[item[key]] = item;
     return acc;
   }, {});
+
+module.exports.getTotalQuantityFromStorageLocations = (storageLocations) =>
+  Object.fromEntries(
+    Object.entries(storageLocations).map(([key, items]) => [
+      key,
+      items.reduce((sum, obj) => sum + (obj.itemQuantity || 0), 0),
+    ])
+  );
+
+module.exports.roundToTwoDecimals = (value) => parseFloat(value.toFixed(2));

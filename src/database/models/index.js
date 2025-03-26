@@ -14,7 +14,7 @@ const {
   NonInventory,
   NonInventoryCommon,
   Phantom,
-  PhantomCommon
+  PhantomCommon,
 } = require("./ItemTypeSchemas");
 
 module.exports = {
@@ -24,6 +24,7 @@ module.exports = {
   ProductListsModel: require("./ProductLists"),
   ABCClassificatonModel: require("./ABCClassification"),
   ItemModel: require("./Item"),
+  InventoryLog: require("./InventoryLog"),
   ItemSharedAttributesModel: require("./ItemSharedAttributes"),
   Products,
   ProductsCommon,
@@ -40,5 +41,5 @@ module.exports = {
   NonInventory,
   NonInventoryCommon,
   Phantom,
-  PhantomCommon
+  PhantomCommon,
 };

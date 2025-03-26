@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 const SupplierModel = require("./Supplier");
 const Item = require("./Item");
 const ItemShared = require("./ItemSharedAttributes");
+const InventoryLog = require("./InventoryLog");
 const {
   ITEM_TYPE,
   ITEM_STATUS,
@@ -283,10 +284,13 @@ const ProductItemSchema = new Schema({
     type: Number,
     default: null,
   },
-
   reorderQuantity: {
     type: Number,
     default: null,
+  },
+  totalQuantity: {
+    type: Object,
+    default: {},
   },
 
   // * COUNTUNG METHOD
@@ -362,6 +366,9 @@ const ProductItemSchema = new Schema({
       return isNotDraft.call(this);
     },
   },
+  inventoryLogs: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
+  ],
 
   // * FOR FUTURE // NOT REQUIRED RN
   serialNumber: {
@@ -914,10 +921,13 @@ const PackagingItemSchema = new Schema({
     type: Number,
     default: null,
   },
-
   reorderQuantity: {
     type: Number,
     default: null,
+  },
+  totalQuantity: {
+    type: Object,
+    default: {},
   },
 
   // * COUNTUNG METHOD
@@ -993,6 +1003,9 @@ const PackagingItemSchema = new Schema({
       return isNotDraft.call(this);
     },
   },
+  inventoryLogs: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
+  ],
 
   // * FOR FUTURE // NOT REQUIRED RN
   serialNumber: {
@@ -1498,10 +1511,13 @@ const AssemblyItemSchema = new Schema({
     type: Number,
     default: null,
   },
-
   reorderQuantity: {
     type: Number,
     default: null,
+  },
+  totalQuantity: {
+    type: Object,
+    default: {},
   },
 
   // * COUNTUNG METHOD
@@ -1577,6 +1593,9 @@ const AssemblyItemSchema = new Schema({
       return isNotDraft.call(this);
     },
   },
+  inventoryLogs: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
+  ],
 
   // * FOR FUTURE // NOT REQUIRED RN
   serialNumber: {
@@ -2095,10 +2114,13 @@ const KitItemSchema = new Schema({
     type: Number,
     default: null,
   },
-
   reorderQuantity: {
     type: Number,
     default: null,
+  },
+  totalQuantity: {
+    type: Object,
+    default: {},
   },
 
   // * COUNTUNG METHOD
@@ -2174,6 +2196,9 @@ const KitItemSchema = new Schema({
       return isNotDraft.call(this);
     },
   },
+  inventoryLogs: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
+  ],
 
   // * FOR FUTURE // NOT REQUIRED RN
   serialNumber: {
@@ -2685,10 +2710,13 @@ const MROItemSchema = new Schema({
     type: Number,
     default: null,
   },
-
   reorderQuantity: {
     type: Number,
     default: null,
+  },
+  totalQuantity: {
+    type: Object,
+    default: {},
   },
 
   // * COUNTUNG METHOD
@@ -2764,6 +2792,9 @@ const MROItemSchema = new Schema({
       return isNotDraft.call(this);
     },
   },
+  inventoryLogs: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
+  ],
 
   // * FOR FUTURE // NOT REQUIRED RN
   serialNumber: {
@@ -3219,10 +3250,13 @@ const RawMaterialItemSchema = new Schema({
     type: Number,
     default: null,
   },
-
   reorderQuantity: {
     type: Number,
     default: null,
+  },
+  totalQuantity: {
+    type: Object,
+    default: {},
   },
 
   // * COUNTUNG METHOD
@@ -3298,6 +3332,9 @@ const RawMaterialItemSchema = new Schema({
       return isNotDraft.call(this);
     },
   },
+  inventoryLogs: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
+  ],
 
   // * FOR FUTURE // NOT REQUIRED RN
   serialNumber: {
@@ -3693,15 +3730,6 @@ const NonInventoryItemSchema = new Schema({
     type: [String],
     default: [],
   },
-
-  // * FOR BACKEND TRACKING & INFORMATION
-  barcode: {
-    type: String,
-    default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
-  },
 });
 
 const NonInventoryItemSchemaCommon = new Schema({
@@ -3883,15 +3911,6 @@ const PhantomItemSchema = new Schema({
   variantImages: {
     type: [String],
     default: [],
-  },
-
-  // * FOR BACKEND TRACKING & INFORMATION
-  barcode: {
-    type: String,
-    default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
 });
 

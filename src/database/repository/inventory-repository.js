@@ -31,12 +31,15 @@ const {
   duplicateS3Images,
   findLargestNumberString,
   incrementVariantId,
+  getTotalQuantityFromStorageLocations,
+  roundToTwoDecimals,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
   VARAINT_ARRAY_COLUMNS,
   ITEM_TYPE,
   ITEM_STATUS,
+  INVENTORY_TRANSACTION_TYPES,
 } = require("../../utils/constants");
 
 const {
@@ -45,6 +48,7 @@ const {
 } = require("../../api-calls/inventory-api-calls");
 
 const Item = require("../models/Item");
+const InventoryLog = require("../models/InventoryLog");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -2387,7 +2391,8 @@ class InventoryRepository {
     session.startTransaction();
 
     try {
-      const { variantId, productId, storageLocations } = payload;
+      const { variantId, productId, storageLocations, reason, comment } =
+        payload;
 
       const product = await ItemSharedAttributesModel.findOneAndUpdate(
         { _id: productId },
@@ -2408,6 +2413,34 @@ class InventoryRepository {
       variant.storageLocations = storageLocations;
       variant.updatedAt = Date.now();
 
+      const currentTotalQuantity = variant.totalQuantity;
+      variant.totalQuantity =
+        getTotalQuantityFromStorageLocations(storageLocations);
+
+      // create inventory logs
+      Object.entries(storageLocations).forEach(([warehouseId, locations]) => {
+        const newTotalQuantity = locations.reduce(
+          (sum, loc) => sum + (loc.itemQuantity || 0),
+          0
+        );
+        const oldTotalQuantity = currentTotalQuantity[warehouseId] || 0;
+
+        const newInventoryLog = new InventoryLog({
+          variantId: variant._id,
+          warehouseId,
+          initialQuantity: oldTotalQuantity,
+          finalQuantity: newTotalQuantity,
+          transactionType: INVENTORY_TRANSACTION_TYPES.INVENTORY_ADJUSTMENT,
+          reason,
+          comment,
+          inventoryValue: roundToTwoDecimals(
+            newTotalQuantity * variant.purchasePrice
+          ),
+        });
+
+        variant.inventoryLogs.push(newInventoryLog);
+      });
+
       // Push activity
       variant.activity.push(activity);
 
@@ -2417,6 +2450,8 @@ class InventoryRepository {
       // Commit the transaction
       await session.commitTransaction();
       session.endSession();
+
+      console.log('saved variant:', variant)
 
       return {
         product: {
@@ -2513,6 +2548,37 @@ class InventoryRepository {
       await session.abortTransaction();
       session.endSession();
       console.error("Error generating inventory transfer:", error);
+      throw error;
+    }
+  }
+
+  async addInventoryLogs(payload) {
+    try {
+      const { variantId, inventoryLogs } = payload;
+      await ItemModel.findByIdAndUpdate(
+        variantId,
+        {
+          $push: { arrayField: { $each: inventoryLogs } },
+        },
+        { runValidators: true }
+      );
+
+      return true;
+    } catch (error) {
+      console.error("Error adding inventory logs:", error);
+      throw error;
+    }
+  }
+
+  async getChartData(query, authKey) {
+    try {
+      const { startDate, endDate, comparedTo, chart } = query;
+      const { chartType, dataSource, xAxis, yAxis, aggregation, groupBy } =
+        chart;
+
+      console.log("query", query);
+    } catch (error) {
+      console.error("Error generating chart data:", error);
       throw error;
     }
   }
