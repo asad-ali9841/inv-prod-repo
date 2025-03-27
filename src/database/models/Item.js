@@ -67,16 +67,7 @@ ItemSchema.index(
     },
   }
 );
-ItemSchema.index(
-  { name: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      name: { $exists: true, $type: 'string' },
-      status: ITEM_STATUS.active,
-    },
-  }
-);
+
 
 
 

@@ -1528,6 +1528,7 @@ class InventoryService {
     payload.itemType = payload.item ?? variantData[0].itemType;
     const { id, itemType, createdVariants } =
       await this.respository.saveProductToDBV3(payload, variantData, session);
+
     //Only reserving spaces --> if stautus is not draft
     if (
       payload.status !== ITEM_STATUS.draft &&
@@ -1690,7 +1691,7 @@ class InventoryService {
         }
       }
     }
-  
+
     // fetching locations using Id
     let locationsData = await getLocationsByIds(authKey, locationIds);
     if (locationsData.status === 0)
@@ -1734,28 +1735,33 @@ class InventoryService {
       userInfo,
       session
     );
-    // TODO: Trigger the quantity reserved
-    // const fetchedProduct = await this.respository.getSingleProductV3(productKey);
-    // // Only reserving spaces --> if stautus is not draft
-    // if (fetchedProduct.status !== "draft") {
-    //   console.log("CALLING TO RESERVE LOC");
-    //   let assignedLoc = await assignQtyToLocations(
-    //     payload,
-    //     authKey,
-    //     fetchedProduct
-    //   );
-    //   if (assignedLoc.status === 0) {
-    //     // location adding error
-    //     await session.abortTransaction();
-    //     session.endSession();
-    //     return apiPayloadFormat(
-    //       0,
-    //       "error",
-    //       "Error adding locations",
-    //       assignedLoc
-    //     );
-    //   }
-    // }
+    const fetchedProduct = await this.respository.getSingleProductV3(
+      productKey
+    );
+    // Only reserving spaces --> if stautus is not draft
+    if (
+      fetchedProduct.status !== ITEM_STATUS.draft &&
+      fetchedProduct.itemType1 !== ITEM_TYPE.nonInventoryItemsCommon &&
+      fetchedProduct.itemType1 !== ITEM_TYPE.phantomItemsCommon
+    ) {
+      console.log("CALLING IN CASE OF NON-DRAFT");
+      let assignedLoc = await assignQtyToLocations(fetchedProduct.variantIds, authKey);
+      if (assignedLoc.status === 0) {
+        const result = assignedLoc.data.failedUpdates
+          .map((update) => {
+            const locationKey = update.locationKey || "No location key";
+            return update.reasons.map(
+              (reason) => `Location Key: ${locationKey}, Reason: ${reason}`
+            );
+          })
+          .flat();
+        await session.abortTransaction();
+        session.endSession();
+        return apiPayloadFormat(0, "error", result, {});
+      }
+    }
+    await session.commitTransaction();
+    session.endSession();
     return updated;
   }
 

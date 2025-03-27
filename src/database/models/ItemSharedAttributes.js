@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+const { ITEM_STATUS } = require("../../utils/constants");
 
 
 const baseOptions = {
@@ -47,5 +48,15 @@ const ItemSharedSchema = new Schema({
   },
 }, baseOptions);
 
+ItemSharedSchema.index(
+  { name: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      name: { $exists: true, $type: 'string' },
+      status: ITEM_STATUS.active,
+    },
+  }
+);
 const ItemShared = mongoose.model("ItemShared", ItemSharedSchema);
 module.exports = ItemShared;

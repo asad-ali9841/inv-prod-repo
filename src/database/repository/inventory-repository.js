@@ -1280,7 +1280,7 @@ class InventoryRepository {
       //TYPE 1 = "Products"
       // Products.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
       //await ItemModel.collection.dropIndex("name_1");
-      // await ItemModel.syncIndexes();
+      //await ItemModel.syncIndexes();
       // ItemModel.collection.indexes().then((indexes) => console.log("AFTER",indexes))
 
 
@@ -1425,7 +1425,7 @@ class InventoryRepository {
           }
         }
       }
-      console.log(itemsToUpdatePayload);
+  
       // 5. Remove specified items (if any)
       if (itemsToRemoveVariantIds.length > 0) {
         await removeItems(itemsToRemoveVariantIds, session);
@@ -1521,7 +1521,7 @@ class InventoryRepository {
       }
 
       // 9. Commit transaction
-      await session.commitTransaction();
+      
 
       // 10. Build response object
       const responseData = {
@@ -1563,8 +1563,6 @@ class InventoryRepository {
         error.message || "Error updating product",
         {}
       );
-    } finally {
-      session.endSession();
     }
   }
 
