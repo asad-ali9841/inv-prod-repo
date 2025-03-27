@@ -1160,14 +1160,6 @@ class InventoryRepository {
     queryFilters,
     sortOptions = { createdAt: 1 }
   ) {
-    // await generateInventoryLogs({
-    //   warehouseId: "671a5b569878388aab0f07ef",
-    //   startDate: "2025-01-01",
-    //   endDate: "2025-03-28",
-    //   variantId: "67cfca59336e79f07ae33238",
-    //   purchasePrice: 23,
-    //   numberOfEntries: 50,
-    // });
     const skip = (page - 1) * limit;
     const { name: searchText, ...filters } = queryFilters;
 
