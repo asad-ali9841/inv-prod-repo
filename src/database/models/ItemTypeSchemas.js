@@ -362,9 +362,6 @@ const ProductItemSchema = new Schema({
   barcode: {
     type: String,
     default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
   inventoryLogs: [
     { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
@@ -999,9 +996,6 @@ const PackagingItemSchema = new Schema({
   barcode: {
     type: String,
     default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
   inventoryLogs: [
     { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
@@ -1589,9 +1583,6 @@ const AssemblyItemSchema = new Schema({
   barcode: {
     type: String,
     default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
   inventoryLogs: [
     { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
@@ -2192,9 +2183,6 @@ const KitItemSchema = new Schema({
   barcode: {
     type: String,
     default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
   inventoryLogs: [
     { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
@@ -2788,9 +2776,6 @@ const MROItemSchema = new Schema({
   barcode: {
     type: String,
     default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
   inventoryLogs: [
     { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },
@@ -3328,9 +3313,6 @@ const RawMaterialItemSchema = new Schema({
   barcode: {
     type: String,
     default: "",
-    required: function () {
-      return isNotDraft.call(this);
-    },
   },
   inventoryLogs: [
     { type: mongoose.Schema.Types.ObjectId, ref: "InventoryLog" },

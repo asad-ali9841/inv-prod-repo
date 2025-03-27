@@ -692,10 +692,10 @@ module.exports = (app) => {
     return res.json(result);
   });
 
-  app.get("/getchartdata", async (req, res, next) => {
+  app.post("/getchartdata", async (req, res, next) => {
     try {
       const chartData = await service.getChartData(
-        req.query,
+        req.body,
         req.get("Authorization")
       );
       return res.json(chartData);
