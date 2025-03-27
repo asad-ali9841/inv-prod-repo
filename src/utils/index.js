@@ -1,4 +1,3 @@
-var bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 //const { getRedisClient } = require('../database/connection')
 //npm run dev
@@ -21,20 +20,7 @@ const {
   DeleteObjectCommand,
   CopyObjectCommand,
 } = require("@aws-sdk/client-s3");
-
-const { DOMImplementation, XMLSerializer } = require("xmldom");
-
-const xmlSerializer = new XMLSerializer();
-const document = new DOMImplementation().createDocument(
-  "http://3dlogistix.com/barcodes/xhtml",
-  "html",
-  null
-);
-const svgNode = document.createElementNS(
-  "http://3dlogistix.com/barcodes/svg",
-  "svg"
-);
-var JsBarcode = require("jsbarcode");
+const bwipjs = require("@bwip-js/node");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -62,12 +48,7 @@ module.exports.changeNameToKey = (name) => {
   return name.replace(/\s+/g, "-");
 };
 
-module.exports.createActivityLog = (
-  userInfo,
-  description,
-  status,
-  changes
-) => {
+module.exports.createActivityLog = (userInfo, description, status, changes) => {
   return {
     key: userInfo.key,
     email: userInfo.email,
@@ -183,16 +164,19 @@ module.exports.generateNextProductId = (counter) => {
   const productId = `3DL${paddedNumber}`;
   return productId;
 };
-module.exports.createBarcode = (id) => {
-  JsBarcode(svgNode, id, {
-    xmlDocument: document,
-    height: 50,
-    width: 3,
-    fontSize: 10,
-    // format: "EAN13" // Uncomment and set format if needed
+
+module.exports.createBarcode = (barcodeType, barcodeValue) =>
+  bwipjs.toSVG({
+    bcid: barcodeType,
+    text: barcodeValue,
+    includetext: true,
+    height: 11,
+    textxalign: "center",
+    textyoffset: 2,
+    scale: 5,
+    scaleX: 5,
+    scaleY: 5,
   });
-  return xmlSerializer.serializeToString(svgNode);
-};
 
 // wrapper function handle try-catch
 module.exports.apiPayloadFormat = (status, type, responseMessage, data) => {
@@ -559,3 +543,13 @@ module.exports.mapArrayToObject = (array, key) =>
     acc[item[key]] = item;
     return acc;
   }, {});
+
+module.exports.getTotalQuantityFromStorageLocations = (storageLocations) =>
+  Object.fromEntries(
+    Object.entries(storageLocations).map(([key, items]) => [
+      key,
+      items.reduce((sum, obj) => sum + (obj.itemQuantity || 0), 0),
+    ])
+  );
+
+module.exports.roundToTwoDecimals = (value) => parseFloat(value.toFixed(2));
