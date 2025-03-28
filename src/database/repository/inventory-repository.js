@@ -1921,12 +1921,17 @@ class InventoryRepository {
   }
 
   // Variant endpoints
-  async getManyProductsUsingVId(objectIds, statusArray) {
+  async getManyProductsUsingVId(objectIds, variant_ids, statusArray) {
     try {
       // Build query object conditionally
-      const query = {
-        variantId: { $in: objectIds },
-      };
+      const query =
+        objectIds?.length > 0
+          ? {
+              variantId: { $in: objectIds },
+            }
+          : {
+              _id: { $in: variant_ids },
+            };
 
       // Only add status filter if statusArray has values
       if (statusArray && statusArray.length > 0) {
@@ -1940,6 +1945,7 @@ class InventoryRepository {
         variantImages: 1,
         purchasePrice: 1,
         purchaseUnits: 1,
+        unitType: 1,
         salesUnits: 1,
         sellingPrice: 1,
         totalQuantity: 1,
@@ -1958,7 +1964,7 @@ class InventoryRepository {
       })
         .populate(
           "sharedAttributes",
-          "inspectionRequirements serialTracking lotTracking"
+          "inspectionRequirements serialTracking lotTracking supplierName supplierId"
         ) // Populate the product field with only the inspectionRequirements
         .lean(); // Use .lean() for plain JavaScript objects
       if (variants.length > 0) {
@@ -1968,6 +1974,7 @@ class InventoryRepository {
           .map((variant) => ({
             productId: variant.sharedAttributes?._id, // The product's ObjectId
             _id: variant._id,
+            unitType: variant.unitType,
             purchaseUnits: variant.purchaseUnits,
             salesUnits: variant.salesUnits,
             sellingPrice: variant.sellingPrice,
@@ -1986,10 +1993,13 @@ class InventoryRepository {
             lengthUnit: variant.lengthUnit,
             leadTimeUnit: variant.leadTimeUnit,
             serialNumber: variant.serialNumber,
+            supplierName: variant.sharedAttributes.supplierName,
+            supplierCustomId: variant.sharedAttributes.supplierId,
             inspectionRequirements:
               variant.sharedAttributes.inspectionRequirements,
             serialTracking: variant.sharedAttributes.serialTracking,
             lotTracking: variant.sharedAttributes.lotTracking,
+            // TODO: discuss removal of storage Locations
             storageLocations: variant.storageLocations,
           }));
 
