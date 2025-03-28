@@ -688,4 +688,21 @@ module.exports = (app) => {
     );
     return res.json(result);
   });
+
+  app.put("/variant/addinventorylogs", userAuth, async (req, res) => {
+    const result = await service.addInventoryLogs(req.body);
+    return res.json(result);
+  });
+
+  app.get("/getchartdata", async (req, res, next) => {
+    try {
+      const chartData = await service.getChartData(
+        req.query,
+        req.get("Authorization")
+      );
+      return res.json(chartData);
+    } catch (error) {
+      next(error);
+    }
+  });
 };

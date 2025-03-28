@@ -57,6 +57,20 @@ const ItemSchema = new Schema(
   baseOptions
 );
 
+ItemSchema.index(
+  { SKU: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      SKU: { $exists: true, $type: 'string' },
+      status: ITEM_STATUS.active,
+    },
+  }
+);
+
+
+
+
 // Pre-save middleware to update warehouseIds from storageLocations
 ItemSchema.pre("save", function (next) {
   this.warehouseIds = getWarehouseIdsFromStorageLocations(

@@ -1,7 +1,7 @@
 const { InventoryRepository } = require("../database");
 const { SupplierModel } = require("../database/models");
 const {
-  createAcitivityLog,
+  createActivityLog,
   createNewPayload,
   detectChangesInUpdate,
   generateNextProductId,
@@ -66,7 +66,7 @@ class InventoryService {
   async updateConfigAttributes(payload) {
     const { attributes, user } = payload;
     //let prevAttri =  await this.respository.getConfiguredAttributes(configKey)
-    let activityLog = createAcitivityLog(
+    let activityLog = createActivityLog(
       user,
       "Product Configuration Updated",
       "",
@@ -337,7 +337,7 @@ class InventoryService {
     // let fetchProduct = await this.respository.fetchProductByKey(productKey);
     // if (!fetchProduct)
     //   return apiPayloadFormat(0, "error", "No product found", {});
-    // const activity = createAcitivityLog(
+    // const activity = createActivityLog(
     //   userInfo,
     //   "Product Updated",
     //   ["active, updated"],
@@ -389,7 +389,7 @@ class InventoryService {
     //   updatedOldVariants.map((ele) => {
     //     if (payload.variants.find((ele1) => ele1.variantId === ele.variantId))
     //       ele.activity.push(
-    //         createAcitivityLog(
+    //         createActivityLog(
     //           userInfo,
     //           "Product Variant Updated",
     //           ["active, updated"],
@@ -405,7 +405,7 @@ class InventoryService {
     //   let newVariants = payload.variants.filter((ele) => !("variantId" in ele));
     //   newVariants.map((data, i) => {
     //     const activity = [
-    //       createAcitivityLog(userInfo, "Product Variant Created", []),
+    //       createActivityLog(userInfo, "Product Variant Created", []),
     //     ];
     //     data.variantId = fetchProduct.productId + (suffix + 1).toString();
     //     JsBarcode(svgNode, data.variantId, {
@@ -591,7 +591,7 @@ class InventoryService {
       ------------------------------------------
     */
   async addNewListItem(payload) {
-    const activity = [createAcitivityLog(payload.user, "New list added", [])];
+    const activity = [createActivityLog(payload.user, "New list added", [])];
     payload.activity = activity;
     payload.status = "show";
     if (payload.hasLabelValue) {
@@ -644,7 +644,7 @@ class InventoryService {
     if (!item)
       return apiPayloadFormat(0, "error", "No list found with this key", {});
     // TODO update the activity with change as well
-    const activity = createAcitivityLog(user, "New item added to list", []);
+    const activity = createActivityLog(user, "New item added to list", []);
 
     if (item.hasLabelValue) {
       // Ensure newData contains both label and value
@@ -731,7 +731,7 @@ class InventoryService {
     if (!item)
       return apiPayloadFormat(0, "error", "No list found with this key", {});
     // TODO update the activity with change as well
-    const activity = createAcitivityLog(user, "List updated", []);
+    const activity = createActivityLog(user, "List updated", []);
     item.activity.push(activity);
     item.updatedAt = Date.now();
     if (item.hasLabelValue) {
@@ -763,7 +763,7 @@ class InventoryService {
       payload.customId = autoId;
     }
     //return payload
-    const activityLog = createAcitivityLog(
+    const activityLog = createActivityLog(
       userInfo,
       payload.status === "active" ? "Supplier Created" : "Supplier Drafted",
       payload.status,
@@ -794,7 +794,7 @@ class InventoryService {
 
       for (const payload of payloadArray) {
         const activity = [
-          createAcitivityLog(
+          createActivityLog(
             userInfo,
             payload.status === "active"
               ? "Supplier Created"
@@ -924,7 +924,7 @@ class InventoryService {
       supplierExistence.toObject(),
       updatePayload
     );
-    const activity = createAcitivityLog(
+    const activity = createActivityLog(
       userData,
       "Supplier Updated",
       ["active", "update"],
@@ -972,7 +972,7 @@ class InventoryService {
     if (!supplierExistence)
       return apiPayloadFormat(0, "error", "Supplier not found", {});
     // TODO Record activity
-    const logActivity = createAcitivityLog(
+    const logActivity = createActivityLog(
       user,
       `Supplier Status Updated`,
       status,
@@ -1008,12 +1008,7 @@ class InventoryService {
     if (!supplierExistence)
       return apiPayloadFormat(0, "error", "Supplier not found", {});
     // TODO Record activity
-    const logActivity = createAcitivityLog(
-      user,
-      "Supplier Deleted",
-      status,
-      []
-    );
+    const logActivity = createActivityLog(user, "Supplier Deleted", status, []);
     const result = await this.respository.updateSupplierDb(
       supplierKey,
       { status },
@@ -1038,7 +1033,7 @@ class InventoryService {
       if (!supplierData) {
         return { _id: key, success: false, error: "Supplier does not exist" };
       }
-      const activityLog = createAcitivityLog(
+      const activityLog = createActivityLog(
         userInfo,
         `Updated Status to ${status}`,
         status,
@@ -1136,7 +1131,7 @@ class InventoryService {
       };
     }
 
-    const activityLog = createAcitivityLog(
+    const activityLog = createActivityLog(
       userInfo,
       payload.status === "active"
         ? "ABC Classification Created"
@@ -1243,7 +1238,7 @@ class InventoryService {
     Object.keys(updatePayload).forEach((key) => {
       abcExist[key] = updatePayload[key];
     });
-    const activity = createAcitivityLog(
+    const activity = createActivityLog(
       userData,
       "ABC Class Updated",
       [updatePayload.status ?? abcExist.status, "update"],
@@ -1275,7 +1270,7 @@ class InventoryService {
     if (!abcExist)
       return apiPayloadFormat(0, "error", "ABC class not found", {});
     // TODO Record activity
-    const logActivity = createAcitivityLog(
+    const logActivity = createActivityLog(
       user,
       status === "deleted" ? "ABC Class Deleted" : `Status Updated`,
       status,
@@ -1311,7 +1306,7 @@ class InventoryService {
       if (!abcclassData) {
         return { _id: key, success: false, error: "ABC Class does not exist" };
       }
-      const activityLog = createAcitivityLog(
+      const activityLog = createActivityLog(
         userInfo,
         `Updated Status to ${status}`,
         status,
@@ -1351,7 +1346,7 @@ class InventoryService {
   // *# INVENTORY
   async addInventoryItem(payload, userInfo) {
     let key = `${payload.productId}-${payload.warehouseId}`;
-    let activity = createAcitivityLog(userInfo, "Inventory created", []);
+    let activity = createActivityLog(userInfo, "Inventory created", []);
     const customData = {
       id: key,
       productId: `${payload.productId}`,
@@ -1421,7 +1416,7 @@ class InventoryService {
       inventoryExistence.result.content,
       customPayload
     );
-    const activityLog = createAcitivityLog(userData, "Update", changes);
+    const activityLog = createActivityLog(userData, "Update", changes);
     customPayload.activity.push(activityLog);
     await this.respository.putUpdatedInv_DataToDB(key, customPayload);
     return apiPayloadFormat(
@@ -1449,7 +1444,7 @@ class InventoryService {
         "Inventory does not exist"
       );
     }
-    const logActivity = createAcitivityLog(
+    const logActivity = createActivityLog(
       user,
       status === "deleted"
         ? "Inventory deleted"
@@ -1478,9 +1473,15 @@ class InventoryService {
     payload.variants.map((data, i) => {
       data.variantId = productId + (i + 1).toString();
       data.productId = productId;
-      data.barcode = createBarcode(data.variantId);
+      const barcodeType = data.barcodeType;
+      const autoGeneratedBarcode = data.autoGeneratedBarcode;
+      const barcodeValue = data.barcodeValue;
+      data.barcode = createBarcode(
+        barcodeType,
+        autoGeneratedBarcode ? data.variantId : barcodeValue
+      );
       const variantActivity = [
-        createAcitivityLog(
+        createActivityLog(
           userInfo,
           data.status === "active" ? "Variant Published" : "Variant drafted",
           data.status,
@@ -1516,7 +1517,7 @@ class InventoryService {
     };
     payload.variantCount = variantData.length;
     payload.activity = [
-      createAcitivityLog(
+      createActivityLog(
         userInfo,
         payload.status === ITEM_STATUS.active
           ? "Product Published"
@@ -1528,6 +1529,7 @@ class InventoryService {
     payload.itemType = payload.item ?? variantData[0].itemType;
     const { id, itemType, createdVariants } =
       await this.respository.saveProductToDBV3(payload, variantData, session);
+
     //Only reserving spaces --> if stautus is not draft
     if (
       payload.status !== ITEM_STATUS.draft &&
@@ -1690,7 +1692,7 @@ class InventoryService {
         }
       }
     }
-  
+
     // fetching locations using Id
     let locationsData = await getLocationsByIds(authKey, locationIds);
     if (locationsData.status === 0)
@@ -1734,28 +1736,33 @@ class InventoryService {
       userInfo,
       session
     );
-    // TODO: Trigger the quantity reserved
-    // const fetchedProduct = await this.respository.getSingleProductV3(productKey);
-    // // Only reserving spaces --> if stautus is not draft
-    // if (fetchedProduct.status !== "draft") {
-    //   console.log("CALLING TO RESERVE LOC");
-    //   let assignedLoc = await assignQtyToLocations(
-    //     payload,
-    //     authKey,
-    //     fetchedProduct
-    //   );
-    //   if (assignedLoc.status === 0) {
-    //     // location adding error
-    //     await session.abortTransaction();
-    //     session.endSession();
-    //     return apiPayloadFormat(
-    //       0,
-    //       "error",
-    //       "Error adding locations",
-    //       assignedLoc
-    //     );
-    //   }
-    // }
+    const fetchedProduct = await this.respository.getSingleProductV3(
+      productKey
+    );
+    // Only reserving spaces --> if stautus is not draft
+    if (
+      fetchedProduct.status !== ITEM_STATUS.draft &&
+      fetchedProduct.itemType1 !== ITEM_TYPE.nonInventoryItemsCommon &&
+      fetchedProduct.itemType1 !== ITEM_TYPE.phantomItemsCommon
+    ) {
+      console.log("CALLING IN CASE OF NON-DRAFT");
+      let assignedLoc = await assignQtyToLocations(fetchedProduct.variantIds, authKey);
+      if (assignedLoc.status === 0) {
+        const result = assignedLoc.data.failedUpdates
+          .map((update) => {
+            const locationKey = update.locationKey || "No location key";
+            return update.reasons.map(
+              (reason) => `Location Key: ${locationKey}, Reason: ${reason}`
+            );
+          })
+          .flat();
+        await session.abortTransaction();
+        session.endSession();
+        return apiPayloadFormat(0, "error", result, {});
+      }
+    }
+    await session.commitTransaction();
+    session.endSession();
     return updated;
   }
 
@@ -1802,13 +1809,19 @@ class InventoryService {
             // Construct the variantId as productId + index
             variantData.variantId = productId + (i + 1).toString();
             variantData.productId = productId;
+            const barcodeType = variantData.barcodeType;
+            const autoGeneratedBarcode = variantData.autoGeneratedBarcode;
+            const barcodeValue = variantData.barcodeValue;
 
             // Generate a barcode string (SVG, base64, etc.) as needed
-            variantData.barcode = createBarcode(variantData.variantId);
+            variantData.barcode = createBarcode(
+              barcodeType,
+              autoGeneratedBarcode ? variantData.variantId : barcodeValue
+            );
 
             // Create variant activity
             const variantActivity = [
-              createAcitivityLog(
+              createActivityLog(
                 userInfo,
                 variantData.status === ITEM_STATUS.active
                   ? "Variant Published"
@@ -1851,7 +1864,7 @@ class InventoryService {
 
         // d) Add top-level activity
         payload.activity = [
-          createAcitivityLog(
+          createActivityLog(
             userInfo,
             payload.status === ITEM_STATUS.active
               ? "Product Published"
@@ -1991,7 +2004,7 @@ class InventoryService {
 
   async performInventoryAdjustment(payload, userInfo) {
     try {
-      const activity = createAcitivityLog(
+      const activity = createActivityLog(
         userInfo,
         `Inventory adjusted for ${payload.variantId}`,
         ITEM_STATUS.active,
@@ -2015,7 +2028,7 @@ class InventoryService {
 
   async performInventoryTransfer(payload, userInfo, authKey) {
     try {
-      const activity = createAcitivityLog(
+      const activity = createActivityLog(
         userInfo,
         `Inventory transfer generated for ${payload.variantId}`,
         ITEM_STATUS.active,
@@ -2038,6 +2051,42 @@ class InventoryService {
         0,
         "error",
         `Error generating transfer: ${error.message}`,
+        []
+      );
+    }
+  }
+
+  async addInventoryLogs(payload) {
+    try {
+      const addedLogs = await this.respository.addInventoryLogs(payload);
+
+      return apiPayloadFormat(1, "success", "Inventory logs added", addedLogs);
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error updating inventory logs: ${error.message}`,
+        []
+      );
+    }
+  }
+
+  async getChartData(queryParams, authKey) {
+    try {
+      const query = qs.parse(queryParams);
+
+      const chartData = await this.respository.getChartData(query, authKey);
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Chart data fetched successfully",
+        chartData
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error fetching chart data: ${error.message}`,
         []
       );
     }
