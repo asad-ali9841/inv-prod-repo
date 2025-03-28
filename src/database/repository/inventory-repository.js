@@ -33,6 +33,7 @@ const {
   incrementVariantId,
   getTotalQuantityFromStorageLocations,
   roundToTwoDecimals,
+  generateInventoryLogs,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -40,6 +41,9 @@ const {
   ITEM_TYPE,
   ITEM_STATUS,
   INVENTORY_TRANSACTION_TYPES,
+  DataSource,
+  ChartType,
+  ComparedTo,
 } = require("../../utils/constants");
 
 const {
@@ -1915,12 +1919,17 @@ class InventoryRepository {
   }
 
   // Variant endpoints
-  async getManyProductsUsingVId(objectIds, statusArray) {
+  async getManyProductsUsingVId(objectIds, variant_ids, statusArray) {
     try {
       // Build query object conditionally
-      const query = {
-        variantId: { $in: objectIds },
-      };
+      const query =
+        objectIds?.length > 0
+          ? {
+              variantId: { $in: objectIds },
+            }
+          : {
+              _id: { $in: variant_ids },
+            };
 
       // Only add status filter if statusArray has values
       if (statusArray && statusArray.length > 0) {
@@ -1934,6 +1943,7 @@ class InventoryRepository {
         variantImages: 1,
         purchasePrice: 1,
         purchaseUnits: 1,
+        unitType: 1,
         salesUnits: 1,
         sellingPrice: 1,
         totalQuantity: 1,
@@ -1952,7 +1962,7 @@ class InventoryRepository {
       })
         .populate(
           "sharedAttributes",
-          "inspectionRequirements serialTracking lotTracking"
+          "inspectionRequirements serialTracking lotTracking supplierName supplierId"
         ) // Populate the product field with only the inspectionRequirements
         .lean(); // Use .lean() for plain JavaScript objects
       if (variants.length > 0) {
@@ -1962,6 +1972,7 @@ class InventoryRepository {
           .map((variant) => ({
             productId: variant.sharedAttributes?._id, // The product's ObjectId
             _id: variant._id,
+            unitType: variant.unitType,
             purchaseUnits: variant.purchaseUnits,
             salesUnits: variant.salesUnits,
             sellingPrice: variant.sellingPrice,
@@ -1980,10 +1991,13 @@ class InventoryRepository {
             lengthUnit: variant.lengthUnit,
             leadTimeUnit: variant.leadTimeUnit,
             serialNumber: variant.serialNumber,
+            supplierName: variant.sharedAttributes.supplierName,
+            supplierCustomId: variant.sharedAttributes.supplierId,
             inspectionRequirements:
               variant.sharedAttributes.inspectionRequirements,
             serialTracking: variant.sharedAttributes.serialTracking,
             lotTracking: variant.sharedAttributes.lotTracking,
+            // TODO: discuss removal of storage Locations
             storageLocations: variant.storageLocations,
           }));
 
@@ -2449,8 +2463,6 @@ class InventoryRepository {
       await session.commitTransaction();
       session.endSession();
 
-      console.log('saved variant:', variant)
-
       return {
         product: {
           _id: product._id,
@@ -2570,11 +2582,78 @@ class InventoryRepository {
 
   async getChartData(query, authKey) {
     try {
-      const { startDate, endDate, comparedTo, chart } = query;
+      const {
+        warehouseId,
+        startDate: startDateStr,
+        endDate: endDateStr,
+        comparedTo,
+        chart,
+      } = query;
       const { chartType, dataSource, xAxis, yAxis, aggregation, groupBy } =
         chart;
 
-      console.log("query", query);
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
+      const rangeInDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+
+      if (
+        dataSource === DataSource.TotalInventoryValue &&
+        [ChartType.BarChart, ChartType.LineChart].includes(chartType) &&
+        comparedTo === ComparedTo.NoComparison
+      ) {
+        let dateFormat, labelPrefix;
+        if (rangeInDays <= 14) {
+          dateFormat = "%Y-%m-%d"; // Daily
+          labelPrefix = "Day ";
+        } else if (rangeInDays <= 45) {
+          dateFormat = "%Y-%U"; // Weekly (Year-WeekNumber)
+          labelPrefix = "Week ";
+        } else if (rangeInDays <= 150) {
+          dateFormat = "%Y-%m"; // Monthly
+          labelPrefix = "Month ";
+        } else {
+          dateFormat = "%Y"; // Yearly
+          labelPrefix = "Year ";
+        }
+
+        const result = await InventoryLog.aggregate([
+          {
+            $match: {
+              createdAt: { $gte: startDate.getTime(), $lte: endDate.getTime() },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: dateFormat,
+                  date: { $toDate: "$createdAt" },
+                },
+              },
+              totalInventoryValue: { $sum: "$inventoryValue" },
+            },
+          },
+          {
+            $sort: { _id: 1 },
+          },
+        ]);
+
+        const chartData = {
+          labels: result.map((entry, index) => `${labelPrefix}${index + 1}`),
+          datasets: [
+            {
+              label: dataSource,
+              data: result.map((entry) => entry.totalInventoryValue),
+              borderColor: "#1F69FF",
+              backgroundColor: "#7AA7FF",
+            },
+          ],
+        };
+
+        return chartData;
+      } else {
+        return [];
+      }
     } catch (error) {
       console.error("Error generating chart data:", error);
       throw error;

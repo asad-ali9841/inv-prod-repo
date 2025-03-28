@@ -283,6 +283,28 @@ const INVENTORY_TRANSACTION_TYPES = {
   INVENTORY_TRANSFER: "INVENTORY_TRANSFER",
 };
 
+const ChartType = {
+  LineChart: "Line Chart",
+  BarChart: "Bar Chart",
+  PieChart: "Pie Chart",
+  DonutChart: "Donut Chart",
+  Gauge: "Gauge",
+  Number: "Number",
+  Table: "Table",
+};
+
+const DataSource = {
+  TimeOnShelf: "Time on shelf",
+  SpaceUtilisation: "Space Utilisation",
+  TotalInventoryValue: "Total Inventory Value",
+};
+
+const ComparedTo = {
+  PreviousPeriod: "Previous Period",
+  PreviousYear: "Previous Year",
+  NoComparison: "No comparison",
+};
+
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
   NEW_VARIANT_STATUS_FROM_NEW_PRODUCT_STATUS,
@@ -301,4 +323,7 @@ module.exports = {
   PRODUCT_AND_VARIANT_ARRAY_COLUMNS,
   VALID_BARCODE_TYPES,
   INVENTORY_TRANSACTION_TYPES,
+  ChartType,
+  DataSource,
+  ComparedTo,
 };
