@@ -305,6 +305,11 @@ const ComparedTo = {
   NoComparison: "No comparison",
 };
 
+const ConversionFactor = {
+  Multiply: "Multiply",
+  Divide: "Divide",
+};
+
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
   NEW_VARIANT_STATUS_FROM_NEW_PRODUCT_STATUS,
@@ -326,4 +331,5 @@ module.exports = {
   ChartType,
   DataSource,
   ComparedTo,
+  ConversionFactor,
 };

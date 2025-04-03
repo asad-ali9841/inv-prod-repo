@@ -20,7 +20,8 @@ const {
   DeleteObjectCommand,
   CopyObjectCommand,
 } = require("@aws-sdk/client-s3");
-const bwipjs = require("@bwip-js/node");
+// keep this import here for the createBarcode method in case barcodes are needed in the future.
+// const bwipjs = require("@bwip-js/node");
 const { INVENTORY_TRANSACTION_TYPES } = require("./constants");
 const InventoryLog = require("../database/models/InventoryLog");
 
@@ -167,20 +168,21 @@ module.exports.generateNextProductId = (counter) => {
   return productId;
 };
 
-module.exports.createBarcode = (barcodeType, barcodeValue) =>
-  barcodeValue?.length > 0
-    ? bwipjs.toSVG({
-        bcid: barcodeType,
-        text: barcodeValue,
-        includetext: true,
-        height: 11,
-        textxalign: "center",
-        textyoffset: 2,
-        scale: 5,
-        scaleX: 5,
-        scaleY: 5,
-      })
-    : "";
+// Keep this around for now. Might be needed in the future
+// module.exports.createBarcode = (barcodeType, barcodeValue) =>
+//   barcodeValue?.length > 0
+//     ? bwipjs.toSVG({
+//         bcid: barcodeType,
+//         text: barcodeValue,
+//         includetext: true,
+//         height: 11,
+//         textxalign: "center",
+//         textyoffset: 2,
+//         scale: 5,
+//         scaleX: 5,
+//         scaleY: 5,
+//       })
+//     : "";
 
 // wrapper function handle try-catch
 module.exports.apiPayloadFormat = (status, type, responseMessage, data) => {
