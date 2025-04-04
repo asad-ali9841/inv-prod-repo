@@ -1161,7 +1161,7 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 }
   ) {
     const skip = (page - 1) * limit;
-    const { name: searchText, ...filters } = queryFilters;
+    const { name: searchText, itemType, ...filters } = queryFilters;
 
     // Separate parent and variant columns
     const parentColumns = columns.filter(
@@ -1190,13 +1190,6 @@ class InventoryRepository {
       },
     });
 
-    pipeline.push({
-      $addFields: {
-        ...convertParentArrayColumnsToString(parentColumns),
-        activity: { $arrayElemAt: ["$activity", -1] },
-      },
-    });
-
     const match = {};
     if (searchText) {
       const escapedSearchText = escapeRegExp(searchText);
@@ -1204,6 +1197,10 @@ class InventoryRepository {
         $regex: escapedSearchText,
         $options: "i",
       };
+    }
+
+    if (itemType) {
+      match["itemType1"] = { $in: itemType.map((type) => type + "Common") };
     }
 
     for (const [key, value] of Object.entries(filters)) {
@@ -1215,6 +1212,13 @@ class InventoryRepository {
     }
 
     pipeline.push({ $match: match });
+
+    pipeline.push({
+      $addFields: {
+        ...convertParentArrayColumnsToString(parentColumns),
+        activity: { $arrayElemAt: ["$activity", -1] },
+      },
+    });
 
     const parentProjection = {};
     parentColumns.forEach((col) => {
@@ -1991,7 +1995,6 @@ class InventoryRepository {
             storageLocations: variant.storageLocations,
           }));
 
-        console.log("matched variants:", matchedVariants);
         return matchedVariants;
       } else {
         console.log("No variants found!");
