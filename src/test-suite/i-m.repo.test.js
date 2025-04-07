@@ -230,7 +230,6 @@ describe("stage 4 Data To DB", () => {
   it("should successfully update various product details in the database", async () => {
     const productKey = "productKey123";
     const payload = {
-      barcode: "barcode123",
       category: "category123",
       relatedItems_Assessories: ["item1", "item2"],
       associatedServices: ["service1", "service2"],
@@ -244,7 +243,6 @@ describe("stage 4 Data To DB", () => {
     expect(inventoryRepository.collection.mutateIn).toHaveBeenCalledWith(
       productKey,
       expect.arrayContaining([
-        couchbase.MutateInSpec.upsert(`barcode`, payload.barcode, { createParents: true }),
         couchbase.MutateInSpec.upsert(`category`, payload.category, { createParents: true }),
         couchbase.MutateInSpec.upsert(`relatedItems_Assessories`, payload.relatedItems_Assessories, { createParents: true }),
         couchbase.MutateInSpec.upsert(`associatedServices`, payload.associatedServices, { createParents: true }),
@@ -258,7 +256,6 @@ describe("stage 4 Data To DB", () => {
   it("should return an error if the database mutation fails", async () => {
     const productKey = "productKey123";
     const payload = {
-      barcode: "barcode123",
       category: "category123",
       relatedItems_Assessories: ["item1", "item2"],
       associatedServices: ["service1", "service2"],
@@ -274,7 +271,6 @@ describe("stage 4 Data To DB", () => {
     expect(inventoryRepository.collection.mutateIn).toHaveBeenCalledWith(
       productKey,
       expect.arrayContaining([
-        couchbase.MutateInSpec.upsert(`barcode`, payload.barcode, { createParents: true }),
         couchbase.MutateInSpec.upsert(`category`, payload.category, { createParents: true }),
         couchbase.MutateInSpec.upsert(`relatedItems_Assessories`, payload.relatedItems_Assessories, { createParents: true }),
         couchbase.MutateInSpec.upsert(`associatedServices`, payload.associatedServices, { createParents: true }),

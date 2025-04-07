@@ -20,7 +20,10 @@ const {
   DeleteObjectCommand,
   CopyObjectCommand,
 } = require("@aws-sdk/client-s3");
-const bwipjs = require("@bwip-js/node");
+// keep this import here for the createBarcode method in case barcodes are needed in the future.
+// const bwipjs = require("@bwip-js/node");
+const { INVENTORY_TRANSACTION_TYPES } = require("./constants");
+const InventoryLog = require("../database/models/InventoryLog");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -165,18 +168,21 @@ module.exports.generateNextProductId = (counter) => {
   return productId;
 };
 
-module.exports.createBarcode = (barcodeType, barcodeValue) =>
-  bwipjs.toSVG({
-    bcid: barcodeType,
-    text: barcodeValue,
-    includetext: true,
-    height: 11,
-    textxalign: "center",
-    textyoffset: 2,
-    scale: 5,
-    scaleX: 5,
-    scaleY: 5,
-  });
+// Keep this around for now. Might be needed in the future
+// module.exports.createBarcode = (barcodeType, barcodeValue) =>
+//   barcodeValue?.length > 0
+//     ? bwipjs.toSVG({
+//         bcid: barcodeType,
+//         text: barcodeValue,
+//         includetext: true,
+//         height: 11,
+//         textxalign: "center",
+//         textyoffset: 2,
+//         scale: 5,
+//         scaleX: 5,
+//         scaleY: 5,
+//       })
+//     : "";
 
 // wrapper function handle try-catch
 module.exports.apiPayloadFormat = (status, type, responseMessage, data) => {
@@ -553,3 +559,62 @@ module.exports.getTotalQuantityFromStorageLocations = (storageLocations) =>
   );
 
 module.exports.roundToTwoDecimals = (value) => parseFloat(value.toFixed(2));
+
+module.exports.generateInventoryLogs = async ({
+  startDate,
+  endDate,
+  warehouseId,
+  variantId,
+  initialQuantity = 0,
+  purchasePrice,
+  numberOfEntries = 10, // Default to 10 logs
+}) => {
+  const logs = [];
+  let currentQuantity = initialQuantity;
+  let timestamps = [];
+
+  // Generate random timestamps within the date range
+  const startTimestamp = new Date(startDate).getTime();
+  const endTimestamp = new Date(endDate).getTime();
+
+  for (let i = 0; i < numberOfEntries; i++) {
+    const randomTimestamp = new Date(
+      startTimestamp + Math.random() * (endTimestamp - startTimestamp)
+    ).getTime();
+    timestamps.push(randomTimestamp);
+  }
+
+  // Sort timestamps chronologically
+  timestamps.sort((a, b) => a - b);
+
+  for (let i = 0; i < numberOfEntries; i++) {
+    const randomChange = Math.floor(Math.random() * 10) + 1; // Random change in quantity (1-10)
+    const transactionType =
+      Math.random() > 0.5
+        ? INVENTORY_TRANSACTION_TYPES.PURCHASE_ORDER
+        : INVENTORY_TRANSACTION_TYPES.SALES_ORDER;
+
+    let finalQuantity;
+    if (transactionType === INVENTORY_TRANSACTION_TYPES.PURCHASE_ORDER) {
+      finalQuantity = currentQuantity + randomChange; // Increase stock
+    } else {
+      finalQuantity = Math.max(0, currentQuantity - randomChange); // Decrease stock, ensure it doesn't go below 0
+    }
+
+    logs.push({
+      variantId,
+      warehouseId,
+      transactionType,
+      initialQuantity: currentQuantity,
+      finalQuantity,
+      inventoryValue: this.roundToTwoDecimals(finalQuantity * purchasePrice),
+      createdAt: timestamps[i],
+    });
+
+    currentQuantity = finalQuantity; // Update initial quantity for next log
+  }
+
+  // Insert into MongoDB
+  await InventoryLog.insertMany(logs);
+  console.log(`${logs.length} inventory logs generated successfully.`);
+};
