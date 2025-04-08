@@ -1949,6 +1949,7 @@ class InventoryRepository {
         height: 1,
         lengthUnit: 1,
         storageLocations: 1,
+        unitTypebarcodeValue:1
       })
         .populate(
           "sharedAttributes",
@@ -1988,8 +1989,8 @@ class InventoryRepository {
             serialTracking: variant.sharedAttributes.serialTracking,
             lotTracking: variant.sharedAttributes.lotTracking,
             storageLocations: variant.storageLocations,
+            baseUOMBarcodeValue: variant.unitTypebarcodeValue,
           }));
-
         return matchedVariants;
       } else {
         console.log("No variants found!");

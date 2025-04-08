@@ -1457,8 +1457,6 @@ class InventoryService {
   // *# PRODUCTS
   async addProductV3(payload, userInfo, authKey) {
     // TODO if abc cat is auto generated -- define rule
-    // assigning product Id
-    console.log("payload", payload);
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -1752,8 +1750,10 @@ class InventoryService {
         return apiPayloadFormat(0, "error", result, {});
       }
     }
-    await session.commitTransaction();
-    session.endSession();
+    if (session.inTransaction()) {
+      await session.commitTransaction();
+      session.endSession();
+    }
     return updated;
   }
 
@@ -2084,7 +2084,7 @@ async function assignQtyToLocations(createdVariants, authKey, mongoDataType=true
     //insertedVariants = createdVariants
     insertedVariants = createdVariants.map(variant => ({
       ...variant,
-      storageLocations: new Map(Object.entries(variant.storageLocations)),
+      storageLocations: new Map(Object.entries(variant.storageLocations?? {})),
     }));
   }
   let result = [];
