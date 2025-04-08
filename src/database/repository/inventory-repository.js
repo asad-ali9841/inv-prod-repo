@@ -1281,7 +1281,6 @@ class InventoryRepository {
       //await ItemModel.collection.dropIndex("name_1");
       //await ItemModel.syncIndexes();
       // ItemModel.collection.indexes().then((indexes) => console.log("AFTER",indexes))
-
       const prodData = await ItemSharedAttributesModel.findById(key)
         .populate([
           {
@@ -1424,7 +1423,7 @@ class InventoryRepository {
           }
         }
       }
-  
+
       // 5. Remove specified items (if any)
       if (itemsToRemoveVariantIds.length > 0) {
         await removeItems(itemsToRemoveVariantIds, session);
@@ -1520,7 +1519,6 @@ class InventoryRepository {
       }
 
       // 9. Commit transaction
-      
 
       // 10. Build response object
       const responseData = {
