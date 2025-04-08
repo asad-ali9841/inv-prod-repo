@@ -1952,7 +1952,6 @@ class InventoryService {
 
   async searchAllProductsV3(queryParams) {
     const filterQuery = qs.parse(queryParams);
-    console.log("filterQuery", filterQuery);
     const page = parseInt(filterQuery.page) || 1;
     const limit = parseInt(filterQuery.limit) || 10;
     const status = filterQuery.status;
