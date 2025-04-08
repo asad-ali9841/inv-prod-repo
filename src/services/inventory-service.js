@@ -1663,8 +1663,9 @@ class InventoryService {
     // populating max qty & qty reserved at locations
     // Extracting location IDs from storageLocations
     const locationIds = [];
-
+    
     for (const variant of fetchedProduct.variants) {
+      let sumQuantity = 0;
       // Handle case for items that don't have storage locations associated with them
       if (!variant.storageLocations)
         return apiPayloadFormat(
@@ -1677,8 +1678,10 @@ class InventoryService {
       for (const locationsArray of Object.values(variant.storageLocations)) {
         for (const location of locationsArray) {
           locationIds.push(location.locationId);
+          sumQuantity += location.itemQuantity;
         }
       }
+      variant.sumQuantity = sumQuantity;
     }
 
     // fetching locations using Id
