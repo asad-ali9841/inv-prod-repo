@@ -1953,7 +1953,7 @@ class InventoryRepository {
       })
         .populate(
           "sharedAttributes",
-          "inspectionRequirements serialTracking lotTracking supplierName supplierId"
+          "inspectionRequirements serialTracking lotTracking supplierName supplierId images"
         ) // Populate the product field with only the inspectionRequirements
         .lean(); // Use .lean() for plain JavaScript objects
       if (variants.length > 0) {
@@ -1969,7 +1969,7 @@ class InventoryRepository {
             sellingPrice: variant.sellingPrice,
             variantId: variant.variantId,
             supplierPartNumber: variant.supplierPartNumber,
-            images: variant.variantImages,
+            images: variant.variantImages.length>0?variant.variantImages: variant.sharedAttributes.images,
             price: variant.purchasePrice,
             qtyAtHand: variant.totalQuantity,
             description: variant.variantDescription,
