@@ -223,11 +223,12 @@ class InventoryService {
       : apiPayloadFormat(0, "error", "Error Fetching Products", {});
   }
 
-  async getManyByVId(idArray, variant_ids) {
+  async getManyByVId(idArray, variant_ids, statusArray) {
     console.log(idArray);
     const allFetched = await this.respository.getManyProductsUsingVId(
       idArray ? JSON.parse(idArray) : undefined,
-      variant_ids ? JSON.parse(variant_ids) : undefined
+      variant_ids ? JSON.parse(variant_ids) : undefined,
+      statusArray ? JSON.parse(statusArray) : undefined
     );
     return allFetched
       ? apiPayloadFormat(1, "success", "Fetched Products", allFetched)
@@ -1736,7 +1737,10 @@ class InventoryService {
       fetchedProduct.itemType1 !== ITEM_TYPE.phantomItemsCommon
     ) {
       console.log("CALLING IN CASE OF NON-DRAFT");
-      let assignedLoc = await assignQtyToLocations(fetchedProduct.variantIds, authKey);
+      let assignedLoc = await assignQtyToLocations(
+        fetchedProduct.variantIds,
+        authKey
+      );
       if (assignedLoc.status === 0) {
         const result = assignedLoc.data.failedUpdates
           .map((update) => {
