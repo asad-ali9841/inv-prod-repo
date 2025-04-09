@@ -21,7 +21,7 @@ async function databaseConnection() {
   return new Promise(async (resolve, reject) => {
     try {
       mongoose.connect(uri, options);
-      console.log('Warehouse Database connected successfully to server');
+      console.log('Inventory Database connected successfully to server');
       resolve({});
     } catch (error) {
       console.error('Error ============ On database connection', error);

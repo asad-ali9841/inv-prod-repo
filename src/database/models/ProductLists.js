@@ -1,7 +1,9 @@
 const mongoose = require('mongoose');
 const DataItemSchema = new mongoose.Schema({
   label: { type: String, required: true },
-  value: { type: String, required: true, unique: true }
+  value: { type: String, required: true, 
+    //unique: true // removed unique constraint coz of null values
+  }
 }, { _id: false });
 
 const ProductListsSchema = new mongoose.Schema({

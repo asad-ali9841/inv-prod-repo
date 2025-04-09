@@ -46,7 +46,7 @@ jobs:
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: inventory-repo
+          ECR_REPOSITORY: prod-inv-service
           github_token: ${{ secrets.TOKEN }}
           IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
         run: |
@@ -83,7 +83,7 @@ jobs:
         id: updating-image-tag
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: inventory-repo
+          ECR_REPOSITORY: prod-inv-service
           github_token: ${{ secrets.TOKEN }}
           IMAGE_TAG: ${{ steps.get-commit-hash.outputs.commit-hash }}-${{ steps.get-timestamp.outputs.timestamp }}
         run: |

@@ -35,8 +35,10 @@ const { getActiveWarehouses } = require("../api-calls/inventory-api-calls");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
-  accessKeyId: LOCAL_ACCESS_KEY,
-  secretAccessKey: LOCAL_SECRET_KEY,
+  credentials: {
+    accessKeyId: LOCAL_ACCESS_KEY,
+    secretAccessKey: LOCAL_SECRET_KEY,
+  },
 });
 
 module.exports = (app) => {

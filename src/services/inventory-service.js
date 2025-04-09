@@ -1458,8 +1458,6 @@ class InventoryService {
   // *# PRODUCTS
   async addProductV3(payload, userInfo, authKey) {
     // TODO if abc cat is auto generated -- define rule
-    // assigning product Id
-    console.log("payload", payload);
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -1737,9 +1735,11 @@ class InventoryService {
       fetchedProduct.itemType1 !== ITEM_TYPE.phantomItemsCommon
     ) {
       console.log("CALLING IN CASE OF NON-DRAFT");
+
       let assignedLoc = await assignQtyToLocations(
-        fetchedProduct.variantIds,
-        authKey
+        payload.variants ?? [],
+        authKey,
+        false
       );
       if (assignedLoc.status === 0) {
         const result = assignedLoc.data.failedUpdates
@@ -1755,8 +1755,10 @@ class InventoryService {
         return apiPayloadFormat(0, "error", result, {});
       }
     }
-    await session.commitTransaction();
-    session.endSession();
+    if (session.inTransaction()) {
+      await session.commitTransaction();
+      session.endSession();
+    }
     return updated;
   }
 
@@ -2078,13 +2080,23 @@ class InventoryService {
 }
 
 // create loactions to write to Db
-async function assignQtyToLocations(createdVariants, authKey) {
+async function assignQtyToLocations(
+  createdVariants,
+  authKey,
+  mongoDataType = true
+) {
   if (!createdVariants || !createdVariants.length) return { status: 1 };
-  const insertedVariants = createdVariants.map((doc) => doc.toObject());
-  //console.log("ARRAY",insertedVariants);
-
+  let insertedVariants = [];
+  if (mongoDataType) {
+    insertedVariants = createdVariants.map((doc) => doc.toObject());
+  } else {
+    //insertedVariants = createdVariants
+    insertedVariants = createdVariants.map((variant) => ({
+      ...variant,
+      storageLocations: new Map(Object.entries(variant.storageLocations ?? {})),
+    }));
+  }
   let result = [];
-
   insertedVariants.map((variant) => {
     // eslint-disable-next-line no-unused-vars
     for (const [key, locations] of variant.storageLocations) {
@@ -2093,8 +2105,8 @@ async function assignQtyToLocations(createdVariants, authKey) {
         result.push({
           locationKey: location.locationId || "", // default empty if locationId is not present
           qtyReserved: location.maxQtyAtLoc,
-          qtyOccupied: location.qtyAtLocation || 0, // default 0 if qtyAtLocation is not present
-          qtyOccupiedBy: {},
+          //qtyOccupied: location.qtyAtLocation || 0, // default 0 if qtyAtLocation is not present
+          //qtyOccupiedBy: {},
           qtyReservedBy: {
             productId: variant.variantId,
             amount: location.maxQtyAtLoc,
