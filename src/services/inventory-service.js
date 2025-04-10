@@ -223,11 +223,12 @@ class InventoryService {
       : apiPayloadFormat(0, "error", "Error Fetching Products", {});
   }
 
-  async getManyByVId(idArray, variant_ids) {
+  async getManyByVId(idArray, variant_ids, statusArray) {
     console.log(idArray);
     const allFetched = await this.respository.getManyProductsUsingVId(
       idArray ? JSON.parse(idArray) : undefined,
-      variant_ids ? JSON.parse(variant_ids) : undefined
+      variant_ids ? JSON.parse(variant_ids) : undefined,
+      statusArray ? JSON.parse(statusArray) : undefined
     );
     return allFetched
       ? apiPayloadFormat(1, "success", "Fetched Products", allFetched)
@@ -1735,7 +1736,11 @@ class InventoryService {
     ) {
       console.log("CALLING IN CASE OF NON-DRAFT");
 
-      let assignedLoc = await assignQtyToLocations(payload.variants??[], authKey, false);
+      let assignedLoc = await assignQtyToLocations(
+        payload.variants ?? [],
+        authKey,
+        false
+      );
       if (assignedLoc.status === 0) {
         const result = assignedLoc.data.failedUpdates
           .map((update) => {
@@ -2075,16 +2080,20 @@ class InventoryService {
 }
 
 // create loactions to write to Db
-async function assignQtyToLocations(createdVariants, authKey, mongoDataType=true) {
+async function assignQtyToLocations(
+  createdVariants,
+  authKey,
+  mongoDataType = true
+) {
   if (!createdVariants || !createdVariants.length) return { status: 1 };
   let insertedVariants = [];
-  if(mongoDataType){
+  if (mongoDataType) {
     insertedVariants = createdVariants.map((doc) => doc.toObject());
-  }else{
+  } else {
     //insertedVariants = createdVariants
-    insertedVariants = createdVariants.map(variant => ({
+    insertedVariants = createdVariants.map((variant) => ({
       ...variant,
-      storageLocations: new Map(Object.entries(variant.storageLocations?? {})),
+      storageLocations: new Map(Object.entries(variant.storageLocations ?? {})),
     }));
   }
   let result = [];

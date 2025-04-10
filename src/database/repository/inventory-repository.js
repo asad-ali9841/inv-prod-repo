@@ -270,6 +270,7 @@ class InventoryRepository {
         _id: 1, // Always include the Variant document ID
         itemId: 1,
         variantId: 1,
+        itemType: 1,
       };
 
       pipeline.push({
