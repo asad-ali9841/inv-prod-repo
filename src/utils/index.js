@@ -618,3 +618,4 @@ module.exports.generateInventoryLogs = async ({
   await InventoryLog.insertMany(logs);
   console.log(`${logs.length} inventory logs generated successfully.`);
 };
+

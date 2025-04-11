@@ -271,6 +271,13 @@ class InventoryRepository {
         itemId: 1,
         variantId: 1,
         itemType: 1,
+        images: {
+          $cond: {
+            if: { $eq: [{ $size: { $ifNull: ["$variantImages", []] } }, 0] },
+            then: "$product.images",
+            else: "$variantImages",
+          },
+        },
       };
 
       pipeline.push({
@@ -382,54 +389,40 @@ class InventoryRepository {
       pipeline.push({
         $project: {
           _id: 1,
-          productId: 1,
+          productId: "$sharedAttributes._id",
+          supplierPartNumber: 1,
+          images: {
+            $cond: {
+              if: { $eq: [{ $size: { $ifNull: ["$variantImages", []] } }, 0] },
+              then: "$sharedAttributes.images",
+              else: "$variantImages",
+            },
+          },
+          description: "$variantDescription",
+          itemType: 1,
+          supplierName: "$sharedAttributes.supplierName",
+          supplierCustomId: "$sharedAttributes.supplierId",
+          variantId: 1,
           unitType: 1,
           purchaseUnits: 1,
           salesUnits: 1,
+          price: "$purchasePrice",
           sellingPrice: 1,
-          variantId: 1,
-          supplierPartNumber: 1,
-          variantImages: 1,
-          purchasePrice: 1,
-          variantDescription: 1,
-          totalQuantity: 1,
           leadTime: 1,
           leadTimeUnit: 1,
-          itemType: 1,
-          sharedAttributes: "$sharedAttributes",
+          qtyAtHand: "$totalQuantity",
         },
       });
 
       // Step 8: Execute the aggregation pipeline
-      const variants = await ItemModel.aggregate(pipeline).exec();
-
-      // Step 9: Transform the output to the desired structure
-      const transformedProd = variants.map((variant) => ({
-        _id: variant._id.toString(),
-        productId: variant.sharedAttributes._id.toString(),
-        supplierPartNumber: variant.supplierPartNumber,
-        images: variant.variantImages,
-        description: variant.variantDescription,
-        itemType: variant.itemType,
-        supplierName: variant.sharedAttributes.supplierName,
-        supplierCustomId: variant.sharedAttributes.supplierId,
-        variantId: variant.variantId,
-        unitType: variant.unitType,
-        purchaseUnits: variant.purchaseUnits,
-        salesUnits: variant.salesUnits,
-        price: variant.purchasePrice,
-        sellingPrice: variant.sellingPrice,
-        leadTime: variant.leadTime,
-        leadTimeUnit: variant.leadTimeUnit,
-        qtyAtHand: variant.totalQuantity,
-      }));
+      const products = await ItemModel.aggregate(pipeline).exec();
 
       // Step 10: Calculate total pages
       const totalPages = Math.ceil(totalItems / pageSize);
       //console.log(transformedProd)
       // Step 11: Return the paginated and transformed results
       return {
-        products: transformedProd,
+        products,
         totalItems,
         totalPages,
         currentPage: pageNumber,
@@ -1274,6 +1267,7 @@ class InventoryRepository {
     }
   }
 
+
   async fetchProductByKeyV3(key) {
     try {
       //TYPE 1 = "Products"
@@ -1950,7 +1944,7 @@ class InventoryRepository {
         height: 1,
         lengthUnit: 1,
         storageLocations: 1,
-        unitTypebarcodeValue:1
+        unitTypebarcodeValue: 1,
       })
         .populate(
           "sharedAttributes",
@@ -1970,7 +1964,10 @@ class InventoryRepository {
             sellingPrice: variant.sellingPrice,
             variantId: variant.variantId,
             supplierPartNumber: variant.supplierPartNumber,
-            images: variant.variantImages.length>0?variant.variantImages: variant.sharedAttributes.images,
+            images:
+              variant.variantImages.length > 0
+                ? variant.variantImages
+                : variant.sharedAttributes.images,
             price: variant.purchasePrice,
             qtyAtHand: variant.totalQuantity,
             description: variant.variantDescription,
@@ -1992,6 +1989,7 @@ class InventoryRepository {
             storageLocations: variant.storageLocations,
             baseUOMBarcodeValue: variant.unitTypebarcodeValue,
           }));
+
         return matchedVariants;
       } else {
         console.log("No variants found!");
@@ -2380,9 +2378,8 @@ class InventoryRepository {
     return allProducts;
   }
 
-  async performInventoryAdjustment(payload, activity) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async performInventoryAdjustment(payload, activity, session) {
+    
 
     try {
       const { variantId, productId, storageLocations, reason, comment } =
@@ -2442,8 +2439,6 @@ class InventoryRepository {
       await variant.save({ session });
 
       // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
 
       return {
         product: {
@@ -2467,9 +2462,18 @@ class InventoryRepository {
     }
   }
 
-  async performInventoryTransfer(payload, activity, authKey) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async getVariantByVariantId(variantId) {
+    try {
+      const variant = await ItemModel.findOne({ variantId })
+      if (!variant) throw new Error("Variant not found");
+      return variant;
+    } catch (error) {
+      console.error("Error fetching variant:", error);
+      throw error;
+    }
+  }
+
+  async performInventoryTransfer(payload, activity, authKey, session) {
 
     try {
       const {
@@ -2519,8 +2523,6 @@ class InventoryRepository {
       // if (res.status !== 1) throw new Error(res.responseMessage);
 
       // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
 
       return {
         product: {
