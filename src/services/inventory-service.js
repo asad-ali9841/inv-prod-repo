@@ -1664,7 +1664,7 @@ class InventoryService {
     // populating max qty & qty reserved at locations
     // Extracting location IDs from storageLocations
     const locationIds = [];
-    
+
     for (const variant of fetchedProduct.variants) {
       let sumQuantity = 0;
       // Handle case for items that don't have storage locations associated with them
@@ -1990,7 +1990,10 @@ class InventoryService {
     return products;
   }
 
-  async performInventoryAdjustment(payload, userInfo) {
+  async performInventoryAdjustment(payload, userInfo, authKey) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
     try {
       const activity = createActivityLog(
         userInfo,
@@ -1998,11 +2001,33 @@ class InventoryService {
         ITEM_STATUS.active,
         []
       );
-
       const result = await this.respository.performInventoryAdjustment(
         payload,
-        activity
+        activity,
+        session
       );
+
+      // Calling the locations functions to update the quantity there too.
+      const updatedLocationsArray = generateLocationsQunantityUpdate(
+        payload,
+        authKey
+      );
+      if (updatedLocationsArray.status === 0) {
+        // If location assignment fails, roll back the entire transaction
+        const reasons = updatedLocationsArray.data.failedUpdates
+          .map((update) => {
+            const locationKey = update.locationKey || "No location key";
+            return update.reasons.map(
+              (reason) => `Location Key: ${locationKey}, Reason: ${reason}`
+            );
+          })
+          .flat();
+        await session.abortTransaction();
+        session.endSession();
+        throw new Error(reasons.join(" | "));
+      }
+      await session.commitTransaction();
+      session.endSession();
       return apiPayloadFormat(1, "success", "Inventory adjusted", result);
     } catch (error) {
       return apiPayloadFormat(
@@ -2015,6 +2040,8 @@ class InventoryService {
   }
 
   async performInventoryTransfer(payload, userInfo, authKey) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
       const activity = createActivityLog(
         userInfo,
@@ -2026,8 +2053,29 @@ class InventoryService {
       const result = await this.respository.performInventoryTransfer(
         payload,
         activity,
-        authKey
+        authKey,
+        session
       );
+      // const updatedLocationsArray = generateLocationsQunantityUpdate(
+      //   payload,
+      //   authKey
+      // );
+      // if (updatedLocationsArray.status === 0) {
+      //   // If location assignment fails, roll back the entire transaction
+      //   const reasons = updatedLocationsArray.data.failedUpdates
+      //     .map((update) => {
+      //       const locationKey = update.locationKey || "No location key";
+      //       return update.reasons.map(
+      //         (reason) => `Location Key: ${locationKey}, Reason: ${reason}`
+      //       );
+      //     })
+      //     .flat();
+      //   await session.abortTransaction();
+      //   session.endSession();
+      //   throw new Error(reasons.join(" | "));
+      // }
+      await session.commitTransaction();
+      session.endSession();
       return apiPayloadFormat(
         1,
         "success",
@@ -2118,8 +2166,31 @@ async function assignQtyToLocations(
       }
     }
   });
-  console.log("FUNCTION CALLED FOR LOCATIONS RESERVING", result);
   // No need to call location APIs
+  if (result.length === 0) return { status: 1 };
+  return await addQtyToLoc(authKey, result);
+}
+
+async function generateLocationsQunantityUpdate(variant, authKey) {
+  let result = [];
+  Object.entries(variant.storageLocations).forEach(([key, locationsArray]) => {
+    locationsArray.forEach((location) => {
+      result.push({
+        locationKey: location.locationId || "",
+        qtyOccupied: location.itemQuantity || 0,
+        qtyOccupiedBy: {
+          productId: variant.variantId,
+          amount: location.itemQuantity || 0,
+        },
+        qtyreserved: location.maxQtyAtLoc || 0,
+        qtyReservedBy: {
+          productId: variant.variantId,
+          amount: location.maxQtyAtLoc || 0,
+        },
+      });
+    });
+  });
+  console.log(result);
   if (result.length === 0) return { status: 1 };
   return await addQtyToLoc(authKey, result);
 }

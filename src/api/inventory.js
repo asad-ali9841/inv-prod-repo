@@ -677,7 +677,7 @@ module.exports = (app) => {
   });
 
   app.put("/variant/inventoryadjustment", userAuth, async (req, res) => {
-    const result = await service.performInventoryAdjustment(req.body, req.user);
+    const result = await service.performInventoryAdjustment(req.body, req.user, req.get("Authorization"));
     return res.json(result);
   });
 

@@ -1274,6 +1274,7 @@ class InventoryRepository {
     }
   }
 
+
   async fetchProductByKeyV3(key) {
     try {
       //TYPE 1 = "Products"
@@ -2380,9 +2381,8 @@ class InventoryRepository {
     return allProducts;
   }
 
-  async performInventoryAdjustment(payload, activity) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async performInventoryAdjustment(payload, activity, session) {
+    
 
     try {
       const { variantId, productId, storageLocations, reason, comment } =
@@ -2442,8 +2442,6 @@ class InventoryRepository {
       await variant.save({ session });
 
       // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
 
       return {
         product: {
@@ -2467,9 +2465,18 @@ class InventoryRepository {
     }
   }
 
-  async performInventoryTransfer(payload, activity, authKey) {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+  async getVariantByVariantId(variantId) {
+    try {
+      const variant = await ItemModel.findOne({ variantId })
+      if (!variant) throw new Error("Variant not found");
+      return variant;
+    } catch (error) {
+      console.error("Error fetching variant:", error);
+      throw error;
+    }
+  }
+
+  async performInventoryTransfer(payload, activity, authKey, session) {
 
     try {
       const {
@@ -2519,8 +2526,6 @@ class InventoryRepository {
       // if (res.status !== 1) throw new Error(res.responseMessage);
 
       // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
 
       return {
         product: {
