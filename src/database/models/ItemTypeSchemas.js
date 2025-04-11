@@ -314,8 +314,8 @@ const ProductItemSchema = new Schema({
 
   // *STOCK & REORDER
   leadTime: {
-    type: String,
-    default: "",
+    type: Number,
+    default: null,
   },
   leadTimeUnit: {
     type: String,
@@ -992,8 +992,8 @@ const PackagingItemSchema = new Schema({
 
   // *STOCK & REORDER
   leadTime: {
-    type: String,
-    default: "",
+    type: Number,
+    default: null,
   },
   leadTimeUnit: {
     type: String,
@@ -1623,8 +1623,8 @@ const AssemblyItemSchema = new Schema({
 
   // *STOCK & REORDER
   leadTime: {
-    type: String,
-    default: "",
+    type: Number,
+    default: null,
   },
   leadTimeUnit: {
     type: String,
@@ -2267,8 +2267,8 @@ const KitItemSchema = new Schema({
 
   // *STOCK & REORDER
   leadTime: {
-    type: String,
-    default: "",
+    type: Number,
+    default: null,
   },
   leadTimeUnit: {
     type: String,
@@ -2904,8 +2904,8 @@ const MROItemSchema = new Schema({
 
   // *STOCK & REORDER
   leadTime: {
-    type: String,
-    default: "",
+    type: Number,
+    default: null,
   },
   leadTimeUnit: {
     type: String,
@@ -3485,8 +3485,8 @@ const RawMaterialItemSchema = new Schema({
 
   // *STOCK & REORDER
   leadTime: {
-    type: String,
-    default: "",
+    type: Number,
+    default: null,
   },
   leadTimeUnit: {
     type: String,
