@@ -620,3 +620,36 @@ module.exports.generateInventoryLogs = async ({
   return generatedLogs;
 };
 
+module.exports.fetchTotalInventoryValueData = async (
+  rangeStart,
+  rangeEnd,
+  warehouseId,
+  dateFormat
+) => {
+  const data = await InventoryLog.aggregate([
+    {
+      $match: {
+        warehouseId,
+        createdAt: {
+          $gte: rangeStart.getTime(),
+          $lte: rangeEnd.getTime(),
+        },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            format: dateFormat,
+            date: { $toDate: "$createdAt" },
+          },
+        },
+        totalInventoryValue: { $sum: "$inventoryValue" },
+      },
+    },
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
+  return data;
+};
