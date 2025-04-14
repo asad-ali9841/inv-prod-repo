@@ -89,7 +89,7 @@ module.exports.addQtyToLoc = async (authKey, locData) => {
   let config = {
     method: "post",
     maxBodyLength: Infinity,
-    url: `${localURL}/warehouse/locations/addquantity`,
+    url: `${baseURL}/warehouse/locations/addquantity`,
     headers: {
       Authorization: authKey,
       "Content-Type": "application/json",
