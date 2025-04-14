@@ -615,7 +615,8 @@ module.exports.generateInventoryLogs = async ({
   }
 
   // Insert into MongoDB
-  await InventoryLog.insertMany(logs);
+  let generatedLogs = await InventoryLog.insertMany(logs);
   console.log(`${logs.length} inventory logs generated successfully.`);
+  return generatedLogs;
 };
 

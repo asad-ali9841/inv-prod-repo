@@ -65,7 +65,6 @@ module.exports.getActiveWarehouses = async (authKey) => {
 };
 module.exports.getLocationsByIds = async (authKey, ids) => {
   let ar = JSON.stringify(ids);
-  console.log("BASE URL", baseURL);
   let config = {
     method: "get",
     maxBodyLength: Infinity,

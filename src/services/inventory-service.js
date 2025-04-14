@@ -1484,12 +1484,6 @@ class InventoryService {
       data.variantImages ||= payload.productHasVariants
         ? payload.images
         : data.variantImages;
-      // Converting sring to mongo object
-      // if(data.itemType === ITEM_TYPE.kits || data.itemType === ITEM_TYPE.assembly){
-      //   data.billOfMaterial.map(bom=>{
-      //     bom.variant_id = new mongoose.Types.ObjectId(bom.variant_id)
-      //   })
-      // }
     });
     // for 1 variant copy the description to variant description
     if (!payload.productHasVariants) {
@@ -1519,6 +1513,7 @@ class InventoryService {
     payload.itemType = payload.item ?? variantData[0].itemType;
     const { id, itemType, createdVariants } =
       await this.respository.saveProductToDBV3(payload, variantData, session);
+
 
     //Only reserving spaces --> if stautus is not draft
     if (
@@ -2125,6 +2120,33 @@ class InventoryService {
         "error",
         `Error fetching chart data: ${error.message}`,
         []
+      );
+    }
+  }
+
+  async updateItemQuantity(payload) {
+    try {
+      // add activity to payload
+      const activity = createActivityLog(
+        payload.user,
+        `Item quantity updated for ${payload.variantId} due to putaway`,
+        ITEM_STATUS.active,
+        []
+      );
+      payload.data.activity = activity;
+      await this.respository.updateItemQuantityDB(payload);
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Item quantity updated successfully",
+        {}
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error updating item quantity: ${error.message}`,
+        {}
       );
     }
   }

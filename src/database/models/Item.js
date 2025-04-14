@@ -63,10 +63,11 @@ ItemSchema.index(
     unique: true,
     partialFilterExpression: {
       SKU: { $exists: true, $type: 'string' },
-      status: ITEM_STATUS.active,
+      status: "active",
     },
   }
 );
+
 
 
 

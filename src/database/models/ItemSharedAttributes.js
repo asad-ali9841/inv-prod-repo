@@ -54,7 +54,7 @@ ItemSharedSchema.index(
     unique: true,
     partialFilterExpression: {
       name: { $exists: true, $type: 'string' },
-      status: ITEM_STATUS.active,
+      status: "active",
     },
   }
 );

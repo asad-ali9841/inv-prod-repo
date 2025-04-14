@@ -1083,6 +1083,11 @@ class InventoryRepository {
   }
   // *# Products
   async saveProductToDBV3(payload, variantsData, session) {
+    //ItemModel.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
+    //await ItemSharedAttributesModel.collection.dropIndex("name_1");
+    ItemSharedAttributesModel.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
+    //return "ok";
+      //await ItemModel.syncIndexes();
     try {
       let { itemType } = payload;
       const SharedModel = sharedModelLookup[itemType];
@@ -1109,12 +1114,9 @@ class InventoryRepository {
           };
         });
         // Insert all Variant documents in bulk
-        createdVariants = await VariantModel.insertMany(
-          variantDocs
-          //   {
-          //   session,
-          // }
-        );
+        createdVariants = await VariantModel.insertMany(variantDocs, {
+          session,
+        });
 
         // Extract the IDs of the created Variants
         variantIds = createdVariants.map((variant) => variant._id);
@@ -1267,7 +1269,6 @@ class InventoryRepository {
     }
   }
 
-
   async fetchProductByKeyV3(key) {
     try {
       //TYPE 1 = "Products"
@@ -1275,6 +1276,21 @@ class InventoryRepository {
       //await ItemModel.collection.dropIndex("name_1");
       //await ItemModel.syncIndexes();
       // ItemModel.collection.indexes().then((indexes) => console.log("AFTER",indexes))
+      // return (await ItemSharedAttributesModel.find({})).map((product) => {
+      //   product.variantIds.map(async (variantid) => {
+      //     const variant = await ItemModel.findById(variantid);
+      //     console.log("variant", variant.leadTime);
+      //     if (!variant) return;
+      //     if (variant.status === "deleted") return;
+      //     if (typeof variant.leadTime === "string") {
+      //       if (variant.leadTime === "" || variant.leadTime === null)
+      //         variant.leadTime = null;
+      //       else variant.leadTime = Number(variant.leadTime);
+      //     }
+      //     await variant.save();
+      //     //console.log("after save", variant);
+      //   });
+      // });
       const prodData = await ItemSharedAttributesModel.findById(key)
         .populate([
           {
@@ -1302,6 +1318,7 @@ class InventoryRepository {
           },
         ])
         .lean(); // Optional: Use lean() for faster read operations and plain JavaScript objects
+
       if (!prodData) {
         console.warn(`Product with ID ${key} not found.`);
         return null; // Or handle as per your application's requirement
@@ -1353,6 +1370,8 @@ class InventoryRepository {
   }
 
   async updateItemSharedDB(itemSharedKey, payload, userInfo, session) {
+    await ItemSharedAttributesModel.syncIndexes()
+    ItemSharedAttributesModel.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
     try {
       // Start the transaction
       session.startTransaction();
@@ -2379,8 +2398,6 @@ class InventoryRepository {
   }
 
   async performInventoryAdjustment(payload, activity, session) {
-    
-
     try {
       const { variantId, productId, storageLocations, reason, comment } =
         payload;
@@ -2464,7 +2481,7 @@ class InventoryRepository {
 
   async getVariantByVariantId(variantId) {
     try {
-      const variant = await ItemModel.findOne({ variantId })
+      const variant = await ItemModel.findOne({ variantId });
       if (!variant) throw new Error("Variant not found");
       return variant;
     } catch (error) {
@@ -2474,7 +2491,6 @@ class InventoryRepository {
   }
 
   async performInventoryTransfer(payload, activity, authKey, session) {
-
     try {
       const {
         variantId,
@@ -2562,6 +2578,44 @@ class InventoryRepository {
       console.error("Error adding inventory logs:", error);
       throw error;
     }
+  }
+
+  async updateItemQuantityDB(payload) {
+    const { variantId, warehouseId, locationId, quantity, activity } = payload.data;
+    console.log("warehouseId", warehouseId, "locationId", locationId, quantity);
+    // 1) Query the document
+    const doc = await Item.findOne({variantId}).exec();
+    console.log(doc)
+    if (!doc) throw new Error("Item not found");
+
+    // 2) Update the map data in memory
+    const warehouseArr = doc.storageLocations.get(warehouseId) || [];
+    const loc = warehouseArr.find((locObj) => locObj.locationId === locationId);
+
+    if (loc) {
+      // Increment existing
+      loc.itemQuantity += quantity;
+    } else {
+      // If location doesn't exist, create a new one
+      warehouseArr.push({
+        locationId,
+        itemQuantity: quantity,
+        // any other fields from storageLocationSchema
+      });
+    }
+
+    // Put the array back into the map
+    doc.storageLocations.set(warehouseId, warehouseArr);
+
+    // Also update totalQuantity
+    doc.totalQuantity[warehouseId] =
+      (doc.totalQuantity[warehouseId] || 0) + quantity;
+    doc.markModified("totalQuantity"); // Mark totalQuantity as modified
+    doc.activity.push(activity); // Add activity log
+    // 3) Save
+    await doc.save();
+    // let addedLogs = await generateInventoryLogs(Date.now(),Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId]-quantity, quantity, 0, 1 )
+    // console.log("addedLogs", addedLogs)
   }
 
   async getChartData(query, authKey) {

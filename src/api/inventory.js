@@ -706,4 +706,12 @@ module.exports = (app) => {
       next(error);
     }
   });
+
+  app.put("/update/itemquantity/putaway", userAuth, async (req, res) => {
+    const product = await service.updateItemQuantity({
+      data: req.body,
+      user: req.user,
+    });
+    return res.json(product);
+  });
 };
