@@ -1370,8 +1370,6 @@ class InventoryRepository {
   }
 
   async updateItemSharedDB(itemSharedKey, payload, userInfo, session) {
-    await ItemSharedAttributesModel.syncIndexes()
-    ItemSharedAttributesModel.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
     try {
       // Start the transaction
       session.startTransaction();
