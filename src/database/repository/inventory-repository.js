@@ -33,6 +33,7 @@ const {
   getTotalQuantityFromStorageLocations,
   roundToTwoDecimals,
   generateInventoryLogs,
+  fetchTotalInventoryValueData,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -1085,9 +1086,11 @@ class InventoryRepository {
   async saveProductToDBV3(payload, variantsData, session) {
     //ItemModel.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
     //await ItemSharedAttributesModel.collection.dropIndex("name_1");
-    ItemSharedAttributesModel.collection.indexes().then((indexes) => console.log("BEFORE",indexes))
+    ItemSharedAttributesModel.collection
+      .indexes()
+      .then((indexes) => console.log("BEFORE", indexes));
     //return "ok";
-      //await ItemModel.syncIndexes();
+    //await ItemModel.syncIndexes();
     try {
       let { itemType } = payload;
       const SharedModel = sharedModelLookup[itemType];
@@ -2583,11 +2586,12 @@ class InventoryRepository {
   }
 
   async updateItemQuantityDB(payload) {
-    const { variantId, warehouseId, locationId, quantity, activity } = payload.data;
+    const { variantId, warehouseId, locationId, quantity, activity } =
+      payload.data;
     console.log("warehouseId", warehouseId, "locationId", locationId, quantity);
     // 1) Query the document
-    const doc = await Item.findOne({variantId}).exec();
-    console.log(doc)
+    const doc = await Item.findOne({ variantId }).exec();
+    console.log(doc);
     if (!doc) throw new Error("Item not found");
 
     // 2) Update the map data in memory
@@ -2629,24 +2633,23 @@ class InventoryRepository {
         comparedTo,
         chart,
       } = query;
-      const { chartType, dataSource, xAxis, yAxis, aggregation, groupBy } =
-        chart;
+      const { chartType, dataSource } = chart;
 
       const startDate = new Date(startDateStr);
       const endDate = new Date(endDateStr);
-      const rangeInDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+      const rangeInMs = endDate - startDate;
+      const rangeInDays = rangeInMs / (1000 * 60 * 60 * 24);
 
       if (
         dataSource === DataSource.TotalInventoryValue &&
-        [ChartType.BarChart, ChartType.LineChart].includes(chartType) &&
-        comparedTo === ComparedTo.NoComparison
+        [ChartType.BarChart, ChartType.LineChart].includes(chartType)
       ) {
         let dateFormat, labelPrefix;
         if (rangeInDays <= 14) {
           dateFormat = "%Y-%m-%d"; // Daily
           labelPrefix = "Day ";
         } else if (rangeInDays <= 45) {
-          dateFormat = "%Y-%U"; // Weekly (Year-WeekNumber)
+          dateFormat = "%Y-%U"; // Weekly
           labelPrefix = "Week ";
         } else if (rangeInDays <= 150) {
           dateFormat = "%Y-%m"; // Monthly
@@ -2656,44 +2659,88 @@ class InventoryRepository {
           labelPrefix = "Year ";
         }
 
-        const result = await InventoryLog.aggregate([
-          {
-            $match: {
-              createdAt: { $gte: startDate.getTime(), $lte: endDate.getTime() },
-            },
-          },
-          {
-            $group: {
-              _id: {
-                $dateToString: {
-                  format: dateFormat,
-                  date: { $toDate: "$createdAt" },
-                },
+        const currentData = await fetchTotalInventoryValueData(
+          startDate,
+          endDate,
+          warehouseId,
+          dateFormat
+        );
+
+        if (comparedTo === ComparedTo.NoComparison) {
+          return {
+            labels: currentData.map(
+              (entry, index) => `${labelPrefix}${index + 1}`
+            ),
+            datasets: [
+              {
+                label: dataSource,
+                data: currentData.map((entry) => entry.totalInventoryValue),
+                borderColor: "#1F69FF",
+                backgroundColor: "#7AA7FF",
               },
-              totalInventoryValue: { $sum: "$inventoryValue" },
-            },
-          },
-          {
-            $sort: { _id: 1 },
-          },
-        ]);
+            ],
+          };
+        }
 
-        const chartData = {
-          labels: result.map((entry, index) => `${labelPrefix}${index + 1}`),
-          datasets: [
-            {
-              label: dataSource,
-              data: result.map((entry) => entry.totalInventoryValue),
-              borderColor: "#1F69FF",
-              backgroundColor: "#7AA7FF",
-            },
-          ],
-        };
+        if (
+          [ComparedTo.PreviousPeriod, ComparedTo.PreviousYear].includes(
+            comparedTo
+          )
+        ) {
+          let prevStartDate, prevEndDate;
 
-        return chartData;
-      } else {
-        return [];
+          if (comparedTo === ComparedTo.PreviousPeriod) {
+            prevEndDate = new Date(startDate.getTime() - 1);
+            prevStartDate = new Date(prevEndDate.getTime() - rangeInMs);
+          } else if (comparedTo === ComparedTo.PreviousYear) {
+            prevStartDate = new Date(
+              startDate.getFullYear() - 1,
+              startDate.getMonth(),
+              startDate.getDate()
+            );
+            prevEndDate = new Date(
+              endDate.getFullYear() - 1,
+              endDate.getMonth(),
+              endDate.getDate()
+            );
+          }
+
+          const previousData = await fetchTotalInventoryValueData(
+            prevStartDate,
+            prevEndDate,
+            warehouseId,
+            dateFormat
+          );
+
+          // Use the longer label list for consistency
+          const labels =
+            currentData.length >= previousData.length
+              ? currentData.map((_, i) => `${labelPrefix}${i + 1}`)
+              : previousData.map((_, i) => `${labelPrefix}${i + 1}`);
+
+          return {
+            labels,
+            datasets: [
+              {
+                label: "Current",
+                data: currentData.map((entry) => entry.totalInventoryValue),
+                borderColor: "#1F69FF",
+                backgroundColor: "#7AA7FF",
+              },
+              {
+                label: "Previous",
+                data: previousData.map((entry) => entry.totalInventoryValue),
+                borderColor: "#FF8A00",
+                backgroundColor: "#FFC87B",
+              },
+            ],
+          };
+        }
+
+        return []; // fallback
       }
+
+      return []; // fallback
     } catch (error) {
       console.error("Error generating chart data:", error);
       throw error;
