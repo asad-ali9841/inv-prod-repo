@@ -45,6 +45,7 @@ const {
   ChartType,
   ComparedTo,
   ConversionFactor,
+  barChartStyles,
 } = require("../../utils/constants");
 
 const {
@@ -2722,16 +2723,18 @@ class InventoryRepository {
             labels,
             datasets: [
               {
-                label: "Current",
-                data: currentData.map((entry) => entry.totalInventoryValue),
-                borderColor: "#1F69FF",
-                backgroundColor: "#7AA7FF",
-              },
-              {
                 label: "Previous",
                 data: previousData.map((entry) => entry.totalInventoryValue),
                 borderColor: "#FF8A00",
                 backgroundColor: "#FFC87B",
+                ...(chartType === ChartType.BarChart ? barChartStyles : {}),
+              },
+              {
+                label: "Current",
+                data: currentData.map((entry) => entry.totalInventoryValue),
+                borderColor: "#1F69FF",
+                backgroundColor: "#7AA7FF",
+                ...(chartType === ChartType.BarChart ? barChartStyles : {}),
               },
             ],
           };
