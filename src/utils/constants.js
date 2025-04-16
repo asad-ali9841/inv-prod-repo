@@ -310,6 +310,20 @@ const ConversionFactor = {
   Divide: "Divide",
 };
 
+const DifferenceStatus = {
+  Increase: 0,
+  Decrease: 1,
+  NoChange: 2,
+};
+
+const ChartAggregation = {
+  Sum: "Sum",
+  Average: "Average",
+  Min: "Min",
+  Max: "Max",
+  Count: "Count",
+};
+
 const barChartStyles = {
   borderWidth: 0,
   borderRadius: {
@@ -345,4 +359,6 @@ module.exports = {
   ComparedTo,
   ConversionFactor,
   barChartStyles,
+  DifferenceStatus,
+  ChartAggregation,
 };

@@ -33,7 +33,6 @@ const {
   getTotalQuantityFromStorageLocations,
   roundToTwoDecimals,
   generateInventoryLogs,
-  fetchTotalInventoryValueData,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -42,10 +41,6 @@ const {
   ITEM_STATUS,
   INVENTORY_TRANSACTION_TYPES,
   DataSource,
-  ChartType,
-  ComparedTo,
-  ConversionFactor,
-  barChartStyles,
 } = require("../../utils/constants");
 
 const {
@@ -55,6 +50,9 @@ const {
 
 const Item = require("../models/Item");
 const InventoryLog = require("../models/InventoryLog");
+const {
+  getTotalInventoryValueChartData,
+} = require("../../utils/chart-data-methods");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -2634,113 +2632,24 @@ class InventoryRepository {
         comparedTo,
         chart,
       } = query;
-      const { chartType, dataSource } = chart;
+      const { chartType, dataSource, aggregation } = chart;
 
-      const startDate = new Date(startDateStr);
-      const endDate = new Date(endDateStr);
-      const rangeInMs = endDate - startDate;
-      const rangeInDays = rangeInMs / (1000 * 60 * 60 * 24);
-
-      if (
-        dataSource === DataSource.TotalInventoryValue &&
-        [ChartType.BarChart, ChartType.LineChart].includes(chartType)
-      ) {
-        let dateFormat, labelPrefix;
-        if (rangeInDays <= 14) {
-          dateFormat = "%Y-%m-%d"; // Daily
-          labelPrefix = "Day ";
-        } else if (rangeInDays <= 45) {
-          dateFormat = "%Y-%U"; // Weekly
-          labelPrefix = "Week ";
-        } else if (rangeInDays <= 150) {
-          dateFormat = "%Y-%m"; // Monthly
-          labelPrefix = "Month ";
-        } else {
-          dateFormat = "%Y"; // Yearly
-          labelPrefix = "Year ";
-        }
-
-        const currentData = await fetchTotalInventoryValueData(
-          startDate,
-          endDate,
-          warehouseId,
-          dateFormat
-        );
-
-        if (comparedTo === ComparedTo.NoComparison) {
-          return {
-            labels: currentData.map(
-              (entry, index) => `${labelPrefix}${index + 1}`
-            ),
-            datasets: [
-              {
-                label: dataSource,
-                data: currentData.map((entry) => entry.totalInventoryValue),
-                borderColor: "#1F69FF",
-                backgroundColor: "#7AA7FF",
-              },
-            ],
-          };
-        }
-
-        if (
-          [ComparedTo.PreviousPeriod, ComparedTo.PreviousYear].includes(
-            comparedTo
-          )
-        ) {
-          let prevStartDate, prevEndDate;
-
-          if (comparedTo === ComparedTo.PreviousPeriod) {
-            prevEndDate = new Date(startDate.getTime() - 1);
-            prevStartDate = new Date(prevEndDate.getTime() - rangeInMs);
-          } else if (comparedTo === ComparedTo.PreviousYear) {
-            prevStartDate = new Date(
-              startDate.getFullYear() - 1,
-              startDate.getMonth(),
-              startDate.getDate()
-            );
-            prevEndDate = new Date(
-              endDate.getFullYear() - 1,
-              endDate.getMonth(),
-              endDate.getDate()
-            );
-          }
-
-          const previousData = await fetchTotalInventoryValueData(
-            prevStartDate,
-            prevEndDate,
+      switch (dataSource) {
+        case DataSource.TotalInventoryValue: {
+          const data = await getTotalInventoryValueChartData({
+            chartType,
+            comparedTo,
             warehouseId,
-            dateFormat
-          );
-
-          // Use the longer label list for consistency
-          const labels =
-            currentData.length >= previousData.length
-              ? currentData.map((_, i) => `${labelPrefix}${i + 1}`)
-              : previousData.map((_, i) => `${labelPrefix}${i + 1}`);
-
-          return {
-            labels,
-            datasets: [
-              {
-                label: "Previous",
-                data: previousData.map((entry) => entry.totalInventoryValue),
-                borderColor: "#FF8A00",
-                backgroundColor: "#FFC87B",
-                ...(chartType === ChartType.BarChart ? barChartStyles : {}),
-              },
-              {
-                label: "Current",
-                data: currentData.map((entry) => entry.totalInventoryValue),
-                borderColor: "#1F69FF",
-                backgroundColor: "#7AA7FF",
-                ...(chartType === ChartType.BarChart ? barChartStyles : {}),
-              },
-            ],
-          };
+            startDateStr,
+            endDateStr,
+            aggregation,
+            dataSource,
+          });
+          return data;
         }
 
-        return []; // fallback
+        default:
+          break;
       }
 
       return []; // fallback
