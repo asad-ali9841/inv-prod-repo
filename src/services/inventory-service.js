@@ -1514,7 +1514,6 @@ class InventoryService {
     const { id, itemType, createdVariants } =
       await this.respository.saveProductToDBV3(payload, variantData, session);
 
-
     //Only reserving spaces --> if stautus is not draft
     if (
       payload.status !== ITEM_STATUS.draft &&
