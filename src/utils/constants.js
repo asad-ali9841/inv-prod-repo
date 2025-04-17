@@ -310,6 +310,32 @@ const ConversionFactor = {
   Divide: "Divide",
 };
 
+const DifferenceStatus = {
+  Increase: 0,
+  Decrease: 1,
+  NoChange: 2,
+};
+
+const ChartAggregation = {
+  Sum: "Sum",
+  Average: "Average",
+  Min: "Min",
+  Max: "Max",
+  Count: "Count",
+};
+
+const barChartStyles = {
+  borderWidth: 0,
+  borderRadius: {
+    topLeft: 4,
+    topRight: 4,
+    bottomLeft: 0,
+    bottomRight: 0,
+  },
+  barThickness: 24,
+  maxBarThickness: 24,
+};
+
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
   NEW_VARIANT_STATUS_FROM_NEW_PRODUCT_STATUS,
@@ -332,4 +358,7 @@ module.exports = {
   DataSource,
   ComparedTo,
   ConversionFactor,
+  barChartStyles,
+  DifferenceStatus,
+  ChartAggregation,
 };
