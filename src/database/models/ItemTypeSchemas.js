@@ -717,6 +717,10 @@ const ProductItemSchemaCommon = new Schema({
 
 const PackagingItemSchema = new Schema({
   // * ITEM IDENTIFICATION
+  shortName: {
+    type: String,
+    default: "",
+  },
   // Not required - but it should be unique if not empty string
   SKU: {
     type: String,
@@ -1112,10 +1116,6 @@ const PackagingItemSchemaCommon = new Schema({
     type: String,
     required: true,
     //unique: true,
-  },
-  shortName: {
-    type: String,
-    default: "",
   },
   // Required only when not draft
   description: {

@@ -1306,9 +1306,9 @@ class InventoryRepository {
       //         updated = true;
       //       }
       //     }
-        
+
       //     item.markModified('storageLocations');
-      //   }        
+      //   }
 
       //   // if (item.totalQuantity) {
       //   //   for (const warehouseId of Object.keys(item.totalQuantity)) {
@@ -2682,7 +2682,6 @@ class InventoryRepository {
         case DataSource.TotalInventoryValuePerCategory: {
           const data = await getTotalInventoryValuePerCategoryChartData({
             chartType,
-            comparedTo,
             warehouseId,
             startDateStr,
             endDateStr,
@@ -2964,6 +2963,7 @@ async function updateOldItems(changedItems, userInfo, session) {
         itemDoc.variantImages = updates.variantImages;
       }
 
+      itemDoc.updatedAt = Date.now();
       // Add an update activity
       itemDoc.activity.push(
         createActivityLog(userInfo, "Item Updated", ["active", "updated"], [])

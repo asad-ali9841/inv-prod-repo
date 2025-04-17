@@ -324,7 +324,7 @@ const fetchTotalInventoryValuePerCategoryData = async (
     },
     {
       $lookup: {
-        from: "items", // Collection for Items
+        from: "items",
         localField: "variantId",
         foreignField: "_id",
         as: "variant",
@@ -333,20 +333,37 @@ const fetchTotalInventoryValuePerCategoryData = async (
     { $unwind: "$variant" },
     {
       $lookup: {
-        from: "itemshareds", // Collection for product-level info
+        from: "itemshareds",
         localField: "variant.sharedAttributes",
         foreignField: "_id",
         as: "product",
       },
     },
-    { $unwind: "$product" },
+    {
+      $unwind: {
+        path: "$product",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $addFields: {
+        categories: {
+          $cond: [
+            { $gt: [{ $size: { $ifNull: ["$product.category", []] } }, 0] },
+            "$product.category",
+            ["Uncategorized"],
+          ],
+        },
+      },
+    },
+    { $unwind: "$categories" }, // Unwind each category
     {
       $group: {
         _id: {
-          category: "$product.category",
+          category: "$categories",
           bucket: {
             $dateToString: {
-              format: dateFormat, // '%Y-%U', '%Y-%m', etc.
+              format: dateFormat,
               date: { $toDate: "$createdAt" },
             },
           },
@@ -366,7 +383,7 @@ const fetchTotalInventoryValuePerCategoryData = async (
       },
     },
     {
-      $sort: { _id: 1 }, // Sort by time bucket
+      $sort: { _id: 1 },
     },
   ]);
 
@@ -375,7 +392,6 @@ const fetchTotalInventoryValuePerCategoryData = async (
 
 const getTotalInventoryValuePerCategoryChartData = async ({
   chartType,
-  comparedTo,
   warehouseId,
   startDateStr,
   endDateStr,
