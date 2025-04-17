@@ -297,6 +297,7 @@ const DataSource = {
   TimeOnShelf: "Time on shelf",
   SpaceUtilisation: "Space Utilisation",
   TotalInventoryValue: "Total Inventory Value",
+  TotalInventoryValuePerCategory: "Total Inventory Value per Category",
 };
 
 const ComparedTo = {
@@ -332,9 +333,43 @@ const barChartStyles = {
     bottomLeft: 0,
     bottomRight: 0,
   },
-  barThickness: 24,
-  maxBarThickness: 24,
+  barThickness: 28,
+  maxBarThickness: 34,
 };
+
+const pieChartStyles = {
+  borderWidth: 1,
+};
+
+const randomColors = [
+  "#32CD85",
+  "#FAA700",
+  "#FA6800",
+  "#F53939",
+  "#D75B95",
+  "#745BD7",
+  "#1F69FF",
+  "#32B8CD",
+  "#8B93A7",
+  "#84E1B6",
+  "#FFCA61",
+  "#FFA361",
+  "#F98A8A",
+  "#E79DBF",
+  "#AB9DE7",
+  "#7AA7FF",
+  "#84D5E1",
+  "#B9BECA",
+  "#1E7B50",
+  "#996600",
+  "#943E00",
+  "#AF0909",
+  "#942458",
+  "#3A2494",
+  "#003AAD",
+  "#1E6F7B",
+  "#4F5668",
+];
 
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
@@ -361,4 +396,6 @@ module.exports = {
   barChartStyles,
   DifferenceStatus,
   ChartAggregation,
+  randomColors,
+  pieChartStyles,
 };

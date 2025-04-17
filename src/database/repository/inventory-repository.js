@@ -52,6 +52,7 @@ const Item = require("../models/Item");
 const InventoryLog = require("../models/InventoryLog");
 const {
   getTotalInventoryValueChartData,
+  getTotalInventoryValuePerCategoryChartData,
 } = require("../../utils/chart-data-methods");
 
 /*
@@ -2619,8 +2620,6 @@ class InventoryRepository {
     doc.activity.push(activity); // Add activity log
     // 3) Save
     await doc.save();
-    // let addedLogs = await generateInventoryLogs(Date.now(),Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId]-quantity, quantity, 0, 1 )
-    // console.log("addedLogs", addedLogs)
   }
 
   async getChartData(query, authKey) {
@@ -2643,6 +2642,18 @@ class InventoryRepository {
             startDateStr,
             endDateStr,
             aggregation,
+            dataSource,
+          });
+          return data;
+        }
+
+        case DataSource.TotalInventoryValuePerCategory: {
+          const data = await getTotalInventoryValuePerCategoryChartData({
+            chartType,
+            comparedTo,
+            warehouseId,
+            startDateStr,
+            endDateStr,
             dataSource,
           });
           return data;

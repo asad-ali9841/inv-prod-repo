@@ -7,6 +7,7 @@ const {
   generateNextProductId,
   errorHandler,
   apiPayloadFormat,
+  generateInventoryLogs,
 } = require("../utils");
 var qs = require("qs");
 const mongoose = require("mongoose");
