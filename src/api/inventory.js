@@ -714,4 +714,12 @@ module.exports = (app) => {
     });
     return res.json(product);
   });
+
+  app.put("/update/itemquantity/picking", userAuth, async (req, res) => {
+    const product = await service.updateItemQuantityPicking({
+      data: req.body,
+      user: req.user,
+    });
+    return res.json(product);
+  });
 };
