@@ -115,6 +115,15 @@ class InventoryService {
       sortOptions,
       authKey
     );
+    // fetchedItemList.items.forEach(async (item) => {
+    //   console.log("ITEM", typeof item.storageLocations);
+    //   const updatedLocationsArray = generateLocationsQunantityUpdate(
+    //     item,
+    //     authKey
+    //   );
+    //   console.log("updatedLocationsArray", updatedLocationsArray)
+    // })
+    
     if (fetchedItemList)
       return apiPayloadFormat(
         1,
@@ -1618,6 +1627,7 @@ class InventoryService {
         "capacityLength",
         "capacityWidth",
         "capacityHeight",
+        "variantImages"
       ],
       sharedColumns: [],
       page: 1,
