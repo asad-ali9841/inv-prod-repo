@@ -2159,6 +2159,33 @@ class InventoryService {
       );
     }
   }
+
+  async updateItemQuantityPicking(payload) {
+    try {
+      // add activity to payload
+      const activity = createActivityLog(
+        payload.user,
+        `Item quantity updated for ${payload.variantId} due to picking`,
+        ITEM_STATUS.active,
+        []
+      );
+      payload.data.activity = activity;
+      await this.respository.reduceItemQuantityDB(payload);
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Item quantity updated successfully",
+        {}
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error updating item quantity: ${error.message}`,
+        {}
+      );
+    }
+  }
 }
 
 // create loactions to write to Db
