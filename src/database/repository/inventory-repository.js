@@ -1294,6 +1294,38 @@ class InventoryRepository {
       //     //console.log("after save", variant);
       //   });
       // });
+      // const items = await ItemModel.find({});
+      // for (const item of items) {
+      //   let updated = false;
+
+      //   if (item.storageLocations instanceof Map) {
+      //     for (const warehouseId of item.storageLocations.keys()) {
+      //       const locations = item.storageLocations.get(warehouseId);
+      //       if (Array.isArray(locations) && locations.length > 0) {
+      //         item.storageLocations.set(warehouseId, []); // Clear the array
+      //         updated = true;
+      //       }
+      //     }
+        
+      //     item.markModified('storageLocations');
+      //   }        
+
+      //   // if (item.totalQuantity) {
+      //   //   for (const warehouseId of Object.keys(item.totalQuantity)) {
+      //   //     if (item.totalQuantity[warehouseId] !== 0) {
+      //   //       item.totalQuantity[warehouseId] = 0;
+      //   //       updated = true;
+      //   //     }
+      //   //   }
+      //   // }
+
+      //   if (updated) {
+      //     //item.markModified('totalQuantity');
+      //     await item.save();
+      //   }
+      // }
+      // return items
+
       const prodData = await ItemSharedAttributesModel.findById(key)
         .populate([
           {
