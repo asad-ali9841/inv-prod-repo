@@ -52,6 +52,7 @@ const Item = require("../models/Item");
 const InventoryLog = require("../models/InventoryLog");
 const {
   getTotalInventoryValueChartData,
+  getTotalInventoryValuePerCategoryChartData,
 } = require("../../utils/chart-data-methods");
 
 /*
@@ -1305,9 +1306,9 @@ class InventoryRepository {
       //         updated = true;
       //       }
       //     }
-        
+
       //     item.markModified('storageLocations');
-      //   }        
+      //   }
 
       //   // if (item.totalQuantity) {
       //   //   for (const warehouseId of Object.keys(item.totalQuantity)) {
@@ -2740,6 +2741,17 @@ class InventoryRepository {
           return data;
         }
 
+        case DataSource.TotalInventoryValuePerCategory: {
+          const data = await getTotalInventoryValuePerCategoryChartData({
+            chartType,
+            warehouseId,
+            startDateStr,
+            endDateStr,
+            dataSource,
+          });
+          return data;
+        }
+
         default:
           break;
       }
@@ -3013,6 +3025,7 @@ async function updateOldItems(changedItems, userInfo, session) {
         itemDoc.variantImages = updates.variantImages;
       }
 
+      itemDoc.updatedAt = Date.now();
       // Add an update activity
       itemDoc.activity.push(
         createActivityLog(userInfo, "Item Updated", ["active", "updated"], [])
