@@ -560,6 +560,7 @@ module.exports.getTotalQuantityFromStorageLocations = (storageLocations) =>
 
 module.exports.roundToTwoDecimals = (value) => parseFloat(value.toFixed(2));
 
+// This is just for randomly generating inventory logs so that charts can be tested
 module.exports.generateInventoryLogs = async ({
   startDate,
   endDate,
