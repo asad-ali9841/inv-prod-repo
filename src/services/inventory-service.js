@@ -117,13 +117,13 @@ class InventoryService {
     );
     // fetchedItemList.items.forEach(async (item) => {
     //   console.log("ITEM", typeof item.storageLocations);
-    //   const updatedLocationsArray = generateLocationsQunantityUpdate(
+    //   const updatedLocationsArray = await generateLocationsQuantityUpdate(
     //     item,
     //     authKey
     //   );
     //   console.log("updatedLocationsArray", updatedLocationsArray)
     // })
-    
+
     if (fetchedItemList)
       return apiPayloadFormat(
         1,
@@ -1627,7 +1627,7 @@ class InventoryService {
         "capacityLength",
         "capacityWidth",
         "capacityHeight",
-        "variantImages"
+        "variantImages",
       ],
       sharedColumns: [],
       page: 1,
@@ -2013,7 +2013,7 @@ class InventoryService {
       );
 
       // Calling the locations functions to update the quantity there too.
-      const updatedLocationsArray = generateLocationsQunantityUpdate(
+      const updatedLocationsArray = await generateLocationsQuantityUpdate(
         payload,
         authKey
       );
@@ -2061,7 +2061,7 @@ class InventoryService {
         authKey,
         session
       );
-      // const updatedLocationsArray = generateLocationsQunantityUpdate(
+      // const updatedLocationsArray = await generateLocationsQuantityUpdate(
       //   payload,
       //   authKey
       // );
@@ -2230,7 +2230,7 @@ async function assignQtyToLocations(
   return await addQtyToLoc(authKey, result);
 }
 
-async function generateLocationsQunantityUpdate(variant, authKey) {
+async function generateLocationsQuantityUpdate(variant, authKey) {
   let result = [];
   Object.entries(variant.storageLocations).forEach(([key, locationsArray]) => {
     locationsArray.forEach((location) => {
