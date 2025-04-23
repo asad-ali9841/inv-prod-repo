@@ -33,6 +33,8 @@ const {
   getTotalQuantityFromStorageLocations,
   roundToTwoDecimals,
   generateInventoryLogs,
+  parseArrayFilter,
+  parseDateRangeFilter,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -41,6 +43,9 @@ const {
   ITEM_STATUS,
   INVENTORY_TRANSACTION_TYPES,
   DataSource,
+  PRODUCT_ARRAY_FILTER_COLUMNS,
+  PRODUCT_DATE_RANGE_FILTER_COLUMNS,
+  PRODUCT_TEXT_FILTER_COLUMNS,
 } = require("../../utils/constants");
 
 const {
@@ -1159,7 +1164,7 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 }
   ) {
     const skip = (page - 1) * limit;
-    const { name: searchText, itemType, ...filters } = queryFilters;
+    const { itemType, ...filters } = queryFilters;
 
     // Separate parent and variant columns
     const parentColumns = columns.filter(
@@ -1189,20 +1194,44 @@ class InventoryRepository {
     });
 
     const match = {};
-    if (searchText) {
-      const escapedSearchText = escapeRegExp(searchText);
-      match["name"] = {
-        $regex: escapedSearchText,
-        $options: "i",
-      };
-    }
 
     if (itemType) {
       match["itemType1"] = { $in: itemType.map((type) => type + "Common") };
     }
 
     for (const [key, value] of Object.entries(filters)) {
-      match[key] = { $in: value };
+      if (PRODUCT_ARRAY_FILTER_COLUMNS.includes(key)) {
+        const parsedFilter = parseArrayFilter(value);
+        if (parsedFilter) {
+          match[key] = {
+            [`$${parsedFilter.operator}`]: parsedFilter.value,
+          };
+        }
+      } else if (key === "countryOfOrigin") {
+        const parsedFilter = parseArrayFilter(value);
+        if (parsedFilter) {
+          match[`${key}.value`] = {
+            [`$${parsedFilter.operator}`]: parsedFilter.value,
+          };
+        }
+      } else if (PRODUCT_DATE_RANGE_FILTER_COLUMNS.includes(key)) {
+        const parsedFilter = parseDateRangeFilter(value);
+        if (parsedFilter) {
+          const { startDate, endDate } = parsedFilter;
+          match[key] = {
+            $gte: startDate.getTime(),
+            $lte: endDate.getTime(),
+          };
+        }
+      } else if (PRODUCT_TEXT_FILTER_COLUMNS.includes(key)) {
+        if (value) {
+          const escapedSearchText = escapeRegExp(value);
+          match[key] = {
+            $regex: escapedSearchText,
+            $options: "i",
+          };
+        }
+      } else match[key] = { $in: value };
     }
 
     if (!match.status) {
@@ -2617,20 +2646,21 @@ class InventoryRepository {
     }
   }
 
-  async  updateItemQuantityDB(payload) {
-    const { variantId, warehouseId, locationId, quantity, activity } = payload.data;
-  
+  async updateItemQuantityDB(payload) {
+    const { variantId, warehouseId, locationId, quantity, activity } =
+      payload.data;
+
     //console.log("warehouseId", warehouseId, "locationId", locationId, quantity);
-  
+
     // 1) Fetch the document
     const doc = await Item.findOne({ variantId }).exec();
     if (!doc) throw new Error("Item not found");
-  
+
     // 2) Update storageLocations (Map of arrays)
     let warehouseArr = doc.storageLocations.get(warehouseId) || [];
-  
+
     let locationExists = false;
-  
+
     const updatedWarehouseArr = warehouseArr.map((locObj) => {
       if (locObj.locationId === locationId) {
         locationExists = true;
@@ -2641,7 +2671,7 @@ class InventoryRepository {
       }
       return locObj;
     });
-  
+
     // If location was not found, push a new one
     if (!locationExists) {
       updatedWarehouseArr.push({
@@ -2650,40 +2680,40 @@ class InventoryRepository {
         // You can add other default fields here from your schema
       });
     }
-  
+
     // Re-set the array to ensure Mongoose detects the change
     doc.storageLocations.set(warehouseId, updatedWarehouseArr);
     doc.markModified("storageLocations");
-  
+
     // 3) Update totalQuantity
     doc.totalQuantity[warehouseId] =
       (doc.totalQuantity[warehouseId] || 0) + quantity;
     doc.markModified("totalQuantity");
-  
+
     // 4) Log the activity
     doc.activity.push(activity);
-  
+
     // 5) Save changes
     await doc.save();
-  
+
     // Optional logging
     // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] + quantity, quantity, 0, 1);
     // console.log("addedLogs", addedLogs);
   }
-  
 
   async reduceItemQuantityDB(payload) {
-    const { variantId, warehouseId, locationId, quantity, activity } = payload.data;
-  
+    const { variantId, warehouseId, locationId, quantity, activity } =
+      payload.data;
+
     //console.log("warehouseId", warehouseId, "locationId", locationId, quantity);
-  
+
     // 1) Query the document
     const doc = await Item.findOne({ variantId }).exec();
     if (!doc) throw new Error("Item not found");
-  
+
     // 2) Update storageLocations (Map of arrays)
     const warehouseArr = doc.storageLocations.get(warehouseId) || [];
-  
+
     // Create a new array with updated itemQuantity
     const updatedWarehouseArr = warehouseArr.map((locObj) => {
       if (locObj.locationId === locationId) {
@@ -2698,23 +2728,22 @@ class InventoryRepository {
     // Re-set the updated array in the Map
     doc.storageLocations.set(warehouseId, updatedWarehouseArr);
     doc.markModified("storageLocations");
-  
+
     // 3) Update totalQuantity
     doc.totalQuantity[warehouseId] =
       (doc.totalQuantity[warehouseId] || 0) - quantity;
     doc.markModified("totalQuantity");
-  
+
     // 4) Log activity
     doc.activity.push(activity);
-  
+
     // 5) Save the document
     await doc.save();
-  
+
     // Optional: log generated inventory changes
     // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] - quantity, quantity, 0, 1)
     // console.log("addedLogs", addedLogs)
   }
-  
 
   async getChartData(query, authKey) {
     try {

@@ -18,6 +18,32 @@ const PRODUCT_ARRAY_COLUMNS = [
   "sellingConditions",
 ];
 
+const PRODUCT_ARRAY_FILTER_COLUMNS = [
+  "supplierName",
+  "supplierId",
+  "category",
+  "packagingType",
+  "storageRequirements",
+  "shelfSpaceRequirements",
+  "handlingInstructions",
+  "inspectionRequirements",
+  "customizationOptions",
+  "associatedServices",
+  "safetyInfo",
+  "regulatoryCompliance",
+  "energyConsumption",
+  "carbonFootPrint",
+  "endOfLifeDisposal",
+  "warrantyInformation",
+  "returnsPolicies",
+  "replacementPartsInfo",
+  "sellingConditions",
+];
+
+const PRODUCT_DATE_RANGE_FILTER_COLUMNS = ["createdAt", "updatedAt"];
+
+const PRODUCT_TEXT_FILTER_COLUMNS = ["name", "description"];
+
 const PRODUCT_AND_VARIANT_ARRAY_COLUMNS = [
   "category",
   "images",
@@ -398,4 +424,7 @@ module.exports = {
   ChartAggregation,
   randomColors,
   pieChartStyles,
+  PRODUCT_ARRAY_FILTER_COLUMNS,
+  PRODUCT_DATE_RANGE_FILTER_COLUMNS,
+  PRODUCT_TEXT_FILTER_COLUMNS,
 };
