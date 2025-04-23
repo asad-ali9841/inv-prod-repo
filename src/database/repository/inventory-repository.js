@@ -46,6 +46,9 @@ const {
   PRODUCT_ARRAY_FILTER_COLUMNS,
   PRODUCT_DATE_RANGE_FILTER_COLUMNS,
   PRODUCT_TEXT_FILTER_COLUMNS,
+  VARIANT_TEXT_FILTER_COLUMNS,
+  VARIANT_ARRAY_FILTER_COLUMNS,
+  VARIANT_DATE_RANGE_FILTER_COLUMNS,
 } = require("../../utils/constants");
 
 const {
@@ -198,6 +201,85 @@ class InventoryRepository {
         },
       });
 
+      // Step 3: Build the match criteria based on input filters
+      const match = {};
+
+      // Apply searchText filter on variantDescription with case-insensitive regex
+      if (searchText) {
+        const escapedSearchText = escapeRegExp(searchText);
+        match["variantDescription"] = {
+          $regex: escapedSearchText,
+          $options: "i",
+        };
+      }
+
+      // Add other filters to the query using $in operator
+      for (const [key, value] of Object.entries(filters)) {
+        if (key === "warehouseIds") match[key] = { $in: value };
+        else {
+          if (key.startsWith("variants.")) {
+            const variantKey = key.split(".")[1];
+
+            if (VARIANT_TEXT_FILTER_COLUMNS.includes(variantKey)) {
+              if (value) {
+                const escapedSearchText = escapeRegExp(value);
+                match[variantKey] = {
+                  $regex: escapedSearchText,
+                  $options: "i",
+                };
+              }
+            } else if (VARIANT_ARRAY_FILTER_COLUMNS.includes(variantKey)) {
+              const parsedFilter = parseArrayFilter(value);
+              if (parsedFilter) {
+                match[variantKey] = {
+                  [`$${parsedFilter.operator}`]: parsedFilter.value,
+                };
+              }
+            } else if (VARIANT_DATE_RANGE_FILTER_COLUMNS.includes(variantKey)) {
+              const parsedFilter = parseDateRangeFilter(value);
+              if (parsedFilter) {
+                const { startDate, endDate } = parsedFilter;
+                match[variantKey] = {
+                  $gte: startDate.getTime(),
+                  $lte: endDate.getTime(),
+                };
+              }
+            }
+          } else {
+            if (PRODUCT_ARRAY_FILTER_COLUMNS.includes(key)) {
+              const parsedFilter = parseArrayFilter(value);
+              if (parsedFilter) {
+                match[`product.${key}`] = {
+                  [`$${parsedFilter.operator}`]: parsedFilter.value,
+                };
+              }
+            } else if (key === "countryOfOrigin") {
+              const parsedFilter = parseArrayFilter(value);
+              if (parsedFilter) {
+                match[`product.${key}.value`] = {
+                  [`$${parsedFilter.operator}`]: parsedFilter.value,
+                };
+              }
+            } else if (PRODUCT_TEXT_FILTER_COLUMNS.includes(key)) {
+              if (value) {
+                const escapedSearchText = escapeRegExp(value);
+                match[`product.${key}`] = {
+                  $regex: escapedSearchText,
+                  $options: "i",
+                };
+              }
+            }
+          }
+        }
+      }
+
+      match["status"] = { $in: ["active"] }; // Only active variants can appear in inventory
+
+      // Add the match stage if there are any criteria
+      if (Object.keys(match).length > 0) {
+        pipeline.push({ $match: match });
+      }
+
       pipeline.push({
         $addFields: {
           ...addProductArrayFields(productColumns),
@@ -224,32 +306,6 @@ class InventoryRepository {
           },
         },
       });
-
-      // Step 3: Build the match criteria based on input filters
-      const match = {};
-
-      // Apply searchText filter on variantDescription with case-insensitive regex
-      if (searchText) {
-        const escapedSearchText = escapeRegExp(searchText);
-        match["variantDescription"] = {
-          $regex: escapedSearchText,
-          $options: "i",
-        };
-      }
-
-      // Add other filters to the query using $in operator
-      for (const [key, value] of Object.entries(filters)) {
-        // TODO: differentiate between filters on product fields and on variant fields
-        if (key === "warehouseIds") match[key] = { $in: value };
-        else match[`product.${key}`] = { $in: value };
-      }
-
-      match["status"] = { $in: ["active"] }; // Only active variants can appear in inventory
-
-      // Add the match stage if there are any criteria
-      if (Object.keys(match).length > 0) {
-        pipeline.push({ $match: match });
-      }
 
       // Step 7: Project the necessary fields
       // Dynamically build the projection
