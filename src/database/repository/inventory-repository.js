@@ -2492,28 +2492,40 @@ class InventoryRepository {
         getTotalQuantityFromStorageLocations(storageLocations);
 
       // create inventory logs
-      Object.entries(storageLocations).forEach(([warehouseId, locations]) => {
-        const newTotalQuantity = locations.reduce(
-          (sum, loc) => sum + (loc.itemQuantity || 0),
-          0
+      const inventoryLogPromises = Object.entries(storageLocations).map(
+        async ([warehouseId, locations]) => {
+          const newTotalQuantity = locations.reduce(
+            (sum, loc) => sum + (loc.itemQuantity || 0),
+            0
+          );
+          const oldTotalQuantity = currentTotalQuantity[warehouseId] || 0;
+
+          const newInventoryLog = new InventoryLog({
+            variantId: variant._id,
+            warehouseId,
+            initialQuantity: oldTotalQuantity,
+            finalQuantity: newTotalQuantity,
+            transactionType: INVENTORY_TRANSACTION_TYPES.INVENTORY_ADJUSTMENT,
+            reason,
+            comment,
+            inventoryValue: roundToTwoDecimals(
+              newTotalQuantity * variant.purchasePrice
+            ),
+          });
+
+          await newInventoryLog.save({ session });
+
+          variant.inventoryLogs.push(newInventoryLog._id);
+        }
+      );
+
+      try {
+        await Promise.all(inventoryLogPromises);
+      } catch (error) {
+        throw new Error(
+          "Failed to save one or more inventory logs: " + error.message
         );
-        const oldTotalQuantity = currentTotalQuantity[warehouseId] || 0;
-
-        const newInventoryLog = new InventoryLog({
-          variantId: variant._id,
-          warehouseId,
-          initialQuantity: oldTotalQuantity,
-          finalQuantity: newTotalQuantity,
-          transactionType: INVENTORY_TRANSACTION_TYPES.INVENTORY_ADJUSTMENT,
-          reason,
-          comment,
-          inventoryValue: roundToTwoDecimals(
-            newTotalQuantity * variant.purchasePrice
-          ),
-        });
-
-        variant.inventoryLogs.push(newInventoryLog);
-      });
+      }
 
       // Push activity
       variant.activity.push(activity);
