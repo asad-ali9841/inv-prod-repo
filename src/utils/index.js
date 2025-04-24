@@ -620,3 +620,36 @@ module.exports.generateInventoryLogs = async ({
   console.log(`${logs.length} inventory logs generated successfully.`);
   return generatedLogs;
 };
+
+module.exports.parseArrayFilter = (filterParamValue) => {
+  // Example value for filterParamValue is in_Apparel,Books
+  if (!filterParamValue) return null;
+
+  const [operator, valueString] = filterParamValue.split("_", 2);
+
+  const value = valueString?.split(",");
+
+  if (!["in", "nin"].includes(operator)) return null;
+  if (!value || value.length === 0) return null;
+
+  return {
+    operator,
+    value,
+  };
+};
+
+module.exports.parseDateRangeFilter = (filterParamValue) => {
+  // Example value for filterParamValue is 19293049403_129329485
+  if (!filterParamValue) return null;
+
+  const [startDate, endDate] = filterParamValue.split("_", 2);
+  if (!startDate || !endDate) return null;
+  const numberStartDate = Number(startDate);
+  const numberEndDate = Number(endDate);
+  if (isNaN(numberStartDate) || isNaN(numberEndDate)) return null;
+
+  return {
+    startDate: new Date(numberStartDate),
+    endDate: new Date(numberEndDate),
+  };
+};
