@@ -2194,7 +2194,7 @@ class InventoryRepository {
                 {}
               ), // Dynamically include itemColumns
               name: "$sharedAttributes.name",
-              //shortName: "$sharedAttributes.shortName",
+              productId: "$sharedAttributes._id",
             },
           },
         },

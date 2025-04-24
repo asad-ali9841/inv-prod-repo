@@ -1613,6 +1613,7 @@ class InventoryService {
       );
     return apiPayloadFormat(1, "error", "No products found", [], "");
   }
+  
   async getAllProductsByTypeV3(queryParams) {
     queryParams = {
       itemColumns: [
