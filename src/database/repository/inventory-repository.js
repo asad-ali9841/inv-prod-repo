@@ -49,11 +49,13 @@ const {
   VARIANT_TEXT_FILTER_COLUMNS,
   VARIANT_ARRAY_FILTER_COLUMNS,
   VARIANT_DATE_RANGE_FILTER_COLUMNS,
+  itemsAtLocationColumns,
 } = require("../../utils/constants");
 
 const {
   getActiveWarehouses,
   createInventoryTransferTasks,
+  getLocationsByIdsForSelection,
 } = require("../../api-calls/inventory-api-calls");
 
 const Item = require("../models/Item");
@@ -145,7 +147,11 @@ class InventoryRepository {
   ) {
     const skip = (page - 1) * limit;
 
-    const { name: searchText, ...filters } = queryFilters;
+    const {
+      name: searchText,
+      selectedLocationIdentifier,
+      ...filters
+    } = queryFilters;
     const warehouseIds = queryFilters.warehouseIds;
 
     if (!warehouseIds || warehouseIds.length === 0)
@@ -203,6 +209,29 @@ class InventoryRepository {
 
       // Step 3: Build the match criteria based on input filters
       const match = {};
+
+      // Filter based on selectedLocationIdentifier
+      if (selectedLocationIdentifier) {
+        const selectedLocationResponse = await getLocationsByIdsForSelection(
+          authKey,
+          undefined,
+          [selectedLocationIdentifier],
+          itemsAtLocationColumns
+        );
+
+        if (
+          selectedLocationResponse.status != 1 ||
+          selectedLocationResponse.type !== "success"
+        )
+          throw new Error("Could not fetch items at location");
+
+        const selectedLocationVariantIds =
+          selectedLocationResponse.data.flatMap((loc) =>
+            loc.qtyReservedBy.map((qtyReserved) => qtyReserved.productId)
+          );
+
+        match["variantId"] = { $in: selectedLocationVariantIds };
+      }
 
       // Apply searchText filter on variantDescription with case-insensitive regex
       if (searchText) {
@@ -2165,7 +2194,7 @@ class InventoryRepository {
                 {}
               ), // Dynamically include itemColumns
               name: "$sharedAttributes.name",
-              //shortName: "$sharedAttributes.shortName",
+              productId: "$sharedAttributes._id",
             },
           },
         },
