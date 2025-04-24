@@ -210,6 +210,29 @@ class InventoryRepository {
       // Step 3: Build the match criteria based on input filters
       const match = {};
 
+      // Filter based on selectedLocationIdentifier
+      if (selectedLocationIdentifier) {
+        const selectedLocationResponse = await getLocationsByIdsForSelection(
+          authKey,
+          undefined,
+          [selectedLocationIdentifier],
+          itemsAtLocationColumns
+        );
+
+        if (
+          selectedLocationResponse.status != 1 ||
+          selectedLocationResponse.type !== "success"
+        )
+          throw new Error("Could not fetch items at location");
+
+        const selectedLocationVariantIds =
+          selectedLocationResponse.data.flatMap((loc) =>
+            loc.qtyReservedBy.map((qtyReserved) => qtyReserved.productId)
+          );
+
+        match["variantId"] = { $in: selectedLocationVariantIds };
+      }
+
       // Apply searchText filter on variantDescription with case-insensitive regex
       if (searchText) {
         const escapedSearchText = escapeRegExp(searchText);
@@ -280,29 +303,6 @@ class InventoryRepository {
       }
 
       match["status"] = { $in: ["active"] }; // Only active variants can appear in inventory
-
-      // Filter based on selectedLocationIdentifier
-      if (selectedLocationIdentifier) {
-        const selectedLocationResponse = await getLocationsByIdsForSelection(
-          authKey,
-          undefined,
-          [selectedLocationIdentifier],
-          itemsAtLocationColumns
-        );
-
-        if (
-          selectedLocationResponse.status != 1 ||
-          selectedLocationResponse.type !== "success"
-        )
-          throw new Error("Could not fetch items at location");
-
-        const selectedLocationVariantIds =
-          selectedLocationResponse.data.flatMap((loc) =>
-            loc.qtyReservedBy.map((qtyReserved) => qtyReserved.productId)
-          );
-
-        match["variantId"] = { $in: selectedLocationVariantIds };
-      }
 
       // Add the match stage if there are any criteria
       if (Object.keys(match).length > 0) {
