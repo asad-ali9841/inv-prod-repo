@@ -49,11 +49,13 @@ const {
   VARIANT_TEXT_FILTER_COLUMNS,
   VARIANT_ARRAY_FILTER_COLUMNS,
   VARIANT_DATE_RANGE_FILTER_COLUMNS,
+  itemsAtLocationColumns,
 } = require("../../utils/constants");
 
 const {
   getActiveWarehouses,
   createInventoryTransferTasks,
+  getLocationsByIdsForSelection,
 } = require("../../api-calls/inventory-api-calls");
 
 const Item = require("../models/Item");
@@ -145,7 +147,11 @@ class InventoryRepository {
   ) {
     const skip = (page - 1) * limit;
 
-    const { name: searchText, ...filters } = queryFilters;
+    const {
+      name: searchText,
+      selectedLocationIdentifier,
+      ...filters
+    } = queryFilters;
     const warehouseIds = queryFilters.warehouseIds;
 
     if (!warehouseIds || warehouseIds.length === 0)
@@ -274,6 +280,29 @@ class InventoryRepository {
       }
 
       match["status"] = { $in: ["active"] }; // Only active variants can appear in inventory
+
+      // Filter based on selectedLocationIdentifier
+      if (selectedLocationIdentifier) {
+        const selectedLocationResponse = await getLocationsByIdsForSelection(
+          authKey,
+          undefined,
+          [selectedLocationIdentifier],
+          itemsAtLocationColumns
+        );
+
+        if (
+          selectedLocationResponse.status != 1 ||
+          selectedLocationResponse.type !== "success"
+        )
+          throw new Error("Could not fetch items at location");
+
+        const selectedLocationVariantIds =
+          selectedLocationResponse.data.flatMap((loc) =>
+            loc.qtyReservedBy.map((qtyReserved) => qtyReserved.productId)
+          );
+
+        match["variantId"] = { $in: selectedLocationVariantIds };
+      }
 
       // Add the match stage if there are any criteria
       if (Object.keys(match).length > 0) {

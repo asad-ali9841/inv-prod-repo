@@ -412,6 +412,8 @@ const randomColors = [
   "#4F5668",
 ];
 
+const itemsAtLocationColumns = ["qtyReservedBy"];
+
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
   NEW_VARIANT_STATUS_FROM_NEW_PRODUCT_STATUS,
@@ -445,4 +447,5 @@ module.exports = {
   VARIANT_TEXT_FILTER_COLUMNS,
   VARIANT_ARRAY_FILTER_COLUMNS,
   VARIANT_DATE_RANGE_FILTER_COLUMNS,
+  itemsAtLocationColumns,
 };
