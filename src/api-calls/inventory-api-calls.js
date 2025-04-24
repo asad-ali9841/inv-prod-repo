@@ -2,6 +2,7 @@ const axios = require("axios");
 const { Routes, baseURL } = require("../config");
 const auth = require("../api/middlewares/auth");
 let localURL = `http://localhost:8000`;
+const qs = require("qs");
 
 module.exports.userDataAPI = async (authKey) => {
   let config = {
@@ -125,6 +126,39 @@ module.exports.createInventoryTransferTasks = async (authKey, taskData) => {
     .request(config)
     .then((response) => {
       console.log(response.data);
+      return response.data;
+    })
+    .catch((error) => {
+      //console.log(error);
+      throw error;
+    });
+};
+
+module.exports.getLocationsByIdsForSelection = async (
+  authKey,
+  ids,
+  locationIdentifiers,
+  columns
+) => {
+  const config = {
+    method: "get",
+    maxBodyLength: Infinity,
+    url: `${Routes.warehouseService}/locations/byids/selection?${qs.stringify(
+      {
+        ids,
+        locationIdentifiers,
+        columns,
+      },
+      { arrayFormat: "brackets" }
+    )}`,
+    headers: {
+      Authorization: authKey,
+    },
+  };
+
+  return axios
+    .request(config)
+    .then((response) => {
       return response.data;
     })
     .catch((error) => {
