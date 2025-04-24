@@ -1628,6 +1628,7 @@ class InventoryService {
         "capacityWidth",
         "capacityHeight",
         "variantImages",
+        "shortName"
       ],
       sharedColumns: [],
       page: 1,
@@ -1649,6 +1650,7 @@ class InventoryService {
       itemColumns,
       filters
     );
+    
     if (fetchedProducts)
       return apiPayloadFormat(
         1,
