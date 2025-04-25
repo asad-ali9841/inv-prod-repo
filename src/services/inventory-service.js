@@ -859,41 +859,43 @@ class InventoryService {
   }
 
   async getAllSuppliers(queryParams) {
-    // let params = {
-    //   page: 1,
-    //   limit: 10,
-    //   filters: {
-    //     name: "",
-    //     //status: ['active']
-    //   },
-    //   columns: ["customId", "name", "website", "type", "activity"],
-    // };
-    //const filterQueryCreate = qs.stringify(params, { arrayFormat: "brackets" });
+    try {
+      const filterQuery = qs.parse(queryParams);
 
-    const filterQuery = qs.parse(queryParams);
-    console.log("filterQuery", filterQuery);
+      const page = parseInt(filterQuery.page) || 1;
+      const limit = parseInt(filterQuery.limit) || 10;
+      const sortField = filterQuery.sortField || "createdAt";
+      const sortOrder = filterQuery.sortOrder;
+      const columnsArray = filterQuery.columns;
+      const columnsJson = columnsArray.reduce((acc, key) => {
+        acc[key] = 1;
+        return acc;
+      }, {});
+      const sortOptions = {
+        [sortField]: Number(sortOrder),
+      };
+      const fetchedSuppliers = await this.respository.fetchSuppliersDB(
+        page,
+        limit,
+        columnsJson,
+        filterQuery.filters,
+        sortOptions
+      );
 
-    const page = parseInt(filterQuery.page) || 1;
-    const limit = parseInt(filterQuery.limit) || 10;
-    const columnsArray = filterQuery.columns;
-    const columnsJson = columnsArray.reduce((acc, key) => {
-      acc[key] = 1;
-      return acc;
-    }, {});
-    const fetchedSuppliers = await this.respository.fetchSuppliersDB(
-      page,
-      limit,
-      columnsJson,
-      filterQuery.filters
-    );
-    if (fetchedSuppliers)
       return apiPayloadFormat(
         1,
         "success",
         "Suppliers fetched successfully",
         fetchedSuppliers
       );
-    return apiPayloadFormat(1, "info", "No Suppliers found", []);
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error fetching suppliers: ${error.message}`,
+        []
+      );
+    }
   }
 
   async getSpecificSupplier(queryParams) {

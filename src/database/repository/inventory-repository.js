@@ -50,6 +50,10 @@ const {
   VARIANT_ARRAY_FILTER_COLUMNS,
   VARIANT_DATE_RANGE_FILTER_COLUMNS,
   itemsAtLocationColumns,
+  SUPPLIER_STATUSES,
+  SUPPLIER_DATE_RANGE_FILTER_COLUMNS,
+  SUPPLIER_TEXT_FILTER_COLUMNS,
+  SUPPLIER_ARRAY_FILTER_COLUMNS,
 } = require("../../utils/constants");
 
 const {
@@ -152,6 +156,7 @@ class InventoryRepository {
       selectedLocationIdentifier,
       ...filters
     } = queryFilters;
+    delete filters.selectedWHKey;
     const warehouseIds = queryFilters.warehouseIds;
 
     if (!warehouseIds || warehouseIds.length === 0)
@@ -726,61 +731,105 @@ class InventoryRepository {
 
     return result;
   }
+
   // Get all Suppliers
   async fetchSuppliersDB(
     pageNumber,
     pageSize,
     columnsJson,
     filters,
-    sortOptions = { createdAt: 1 }
+    sortOptions
   ) {
-    //
-    let query = {};
-    if ("name" in filters) {
-      if (filters.name === "") delete filters.name;
-      else {
-        // add regex logic to name
-        const escapedSearchText = escapeRegExp(filters.name);
-        const regexPattern = new RegExp(`${escapedSearchText}`, "i");
-        query.name = { $regex: regexPattern };
-        delete filters.name;
+    const skip = (pageNumber - 1) * pageSize;
+    const { status, ...restFilters } = filters;
+
+    // Initialize aggregation pipeline
+    const pipeline = [];
+
+    // Apply the filters
+    const match = {};
+
+    if (status && status.length > 0) {
+      match["status"] = { $in: status };
+    } else {
+      match["status"] = { $ne: SUPPLIER_STATUSES.DELETED };
+    }
+
+    // Add other filters
+    for (const [key, value] of Object.entries(restFilters)) {
+      if (key === "currency") {
+        const parsedFilter = parseArrayFilter(value);
+        if (parsedFilter) {
+          match[`${key}.value`] = {
+            [`$${parsedFilter.operator}`]: parsedFilter.value,
+          };
+        }
+      } else if (SUPPLIER_DATE_RANGE_FILTER_COLUMNS.includes(key)) {
+        const parsedFilter = parseDateRangeFilter(value);
+        if (parsedFilter) {
+          const { startDate, endDate } = parsedFilter;
+          match[key] = {
+            $gte: startDate.getTime(),
+            $lte: endDate.getTime(),
+          };
+        }
+      } else if (SUPPLIER_TEXT_FILTER_COLUMNS.includes(key)) {
+        const escapedSearchText = escapeRegExp(value);
+        match[key] = {
+          $regex: escapedSearchText,
+          $options: "i",
+        };
+      } else if (SUPPLIER_ARRAY_FILTER_COLUMNS.includes(key)) {
+        const parsedFilter = parseArrayFilter(value);
+        if (parsedFilter) {
+          match[key] = {
+            [`$${parsedFilter.operator}`]: parsedFilter.value,
+          };
+        }
       }
     }
-    // iterate over the object and add keys to query
-    for (const [key, value] of Object.entries(filters)) {
-      query[key] = { $in: value };
-    }
-    // Projection to exclude sensitive fields
-    let projection = {
-      ...columnsJson,
-    };
-    try {
-      const includeActivity = Object.prototype.hasOwnProperty.call(
-        columnsJson,
-        "activity"
-      );
-      if (includeActivity) projection.status = 1;
-      // Count total items matching the query
-      const totalItems = await SupplierModel.countDocuments(query);
 
-      // Find users with pagination and sorting
-      let suppliers = await SupplierModel.find(query, projection)
-        .sort(sortOptions)
-        .skip((pageNumber - 1) * pageSize)
-        .limit(pageSize)
-        .lean();
-      let filteredSupplier = sortActivityArray(suppliers);
+    pipeline.push({ $match: match });
+
+    pipeline.push({ $sort: sortOptions });
+
+    pipeline.push({
+      $project: {
+        ...columnsJson,
+        activity: { $arrayElemAt: ["$activity", -1] },
+      },
+    });
+
+    pipeline.push({
+      $facet: {
+        totalItems: [{ $count: "count" }], // Count filtered items
+        suppliers: [{ $skip: skip }, { $limit: pageSize }],
+      },
+    });
+
+    try {
+      const [filteredResult, dbTotalItems] = await Promise.all([
+        SupplierModel.aggregate(pipeline).exec(),
+        SupplierModel.countDocuments({
+          status: { $ne: SUPPLIER_STATUSES.DELETED },
+        }).exec(),
+      ]);
+
+      const totalItems = filteredResult[0]?.totalItems?.[0]?.count || 0;
+
       return {
-        suppliers: filteredSupplier,
+        suppliers: filteredResult[0]?.suppliers,
         totalItems,
+        dbTotalItems,
         totalPages: Math.ceil(totalItems / pageSize),
         currentPage: pageNumber,
       };
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Error fetching suppliers:", error);
       throw error;
     }
   }
+
   async searchSuppliersDB(
     pageNumber,
     pageSize,
@@ -1262,13 +1311,6 @@ class InventoryRepository {
     // Initialize aggregation pipeline
     const pipeline = [];
 
-    const dbTotalItemsPipeline = [
-      { $match: { status: { $ne: "deleted" } } },
-      { $count: "count" },
-    ];
-    const [{ count: dbTotalItems = 0 } = {}] =
-      await ItemSharedAttributesModel.aggregate(dbTotalItemsPipeline).exec();
-
     pipeline.push({
       $lookup: {
         from: "items", // Name of the variants collection
@@ -1319,8 +1361,8 @@ class InventoryRepository {
       } else match[key] = { $in: value };
     }
 
-    if (!match.status) {
-      match.status = { $ne: "deleted" };
+    if (!match.status || match.status.length === 0) {
+      match.status = { $ne: ITEM_STATUS.deleted };
     }
 
     pipeline.push({ $match: match });
@@ -1368,13 +1410,17 @@ class InventoryRepository {
     });
 
     try {
-      const [results] = await ItemSharedAttributesModel.aggregate(
-        pipeline
-      ).exec();
-      const totalItems = results?.totalItems?.[0]?.count || 0;
+      const [results, dbTotalItems] = await Promise.all([
+        ItemSharedAttributesModel.aggregate(pipeline).exec(),
+        ItemSharedAttributesModel.countDocuments({
+          status: { $ne: ITEM_STATUS.deleted },
+        }).exec(),
+      ]);
+
+      const totalItems = results[0]?.totalItems?.[0]?.count || 0;
 
       return {
-        products: results?.products,
+        products: results[0]?.products,
         totalItems, // Count of items matching filters
         dbTotalItems, // Count of all non-deleted items
         totalPages: Math.ceil(totalItems / limit),
