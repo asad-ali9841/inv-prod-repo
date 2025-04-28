@@ -234,7 +234,6 @@ class InventoryService {
   }
 
   async getManyByVId(idArray, variant_ids, statusArray) {
-    console.log(idArray);
     const allFetched = await this.respository.getManyProductsUsingVId(
       idArray ? JSON.parse(idArray) : undefined,
       variant_ids ? JSON.parse(variant_ids) : undefined,
