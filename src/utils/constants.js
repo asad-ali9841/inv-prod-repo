@@ -105,6 +105,12 @@ const VARAINT_OBJECT_COLUMNS = [
   "salesUnits",
 ];
 
+const SUPPLIER_ARRAY_FILTER_COLUMNS = ["type", "currency", "paymentTerms"];
+
+const SUPPLIER_DATE_RANGE_FILTER_COLUMNS = ["createdAt", "updatedAt"];
+
+const SUPPLIER_TEXT_FILTER_COLUMNS = ["name", "customId", "website"];
+
 const SUPPLIER_STATUSES = {
   ACTIVE: "active",
   DEACTIVATED: "deactivated",
@@ -448,4 +454,7 @@ module.exports = {
   VARIANT_ARRAY_FILTER_COLUMNS,
   VARIANT_DATE_RANGE_FILTER_COLUMNS,
   itemsAtLocationColumns,
+  SUPPLIER_ARRAY_FILTER_COLUMNS,
+  SUPPLIER_DATE_RANGE_FILTER_COLUMNS,
+  SUPPLIER_TEXT_FILTER_COLUMNS,
 };
