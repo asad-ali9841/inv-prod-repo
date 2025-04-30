@@ -1977,13 +1977,17 @@ class InventoryService {
     const status = filterQuery.status;
     const supplierCustomId = filterQuery.supplierCustomId;
     const searchText = filterQuery.searchText;
+    const itemTypes = filterQuery.itemTypes;
+    const excludeOnDemandKit = filterQuery.excludeOnDemandKit;
 
     const fetchedProducts = await this.respository.searchProductsDBV3(
       page,
       limit,
       status,
       supplierCustomId,
-      searchText
+      searchText,
+      itemTypes,
+      excludeOnDemandKit
     );
     if (fetchedProducts)
       return apiPayloadFormat(

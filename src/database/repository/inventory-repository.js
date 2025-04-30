@@ -55,6 +55,7 @@ const {
   SUPPLIER_TEXT_FILTER_COLUMNS,
   SUPPLIER_ARRAY_FILTER_COLUMNS,
   VARIANT_ATTRIBUTES,
+  KIT_ASSEMBLY_TYPE,
 } = require("../../utils/constants");
 
 const {
@@ -416,6 +417,8 @@ class InventoryRepository {
     status,
     supplierCustomId,
     searchText,
+    itemTypes,
+    excludeOnDemandKit,
     sortOptions = { createdAt: 1 }
   ) {
     try {
@@ -436,6 +439,14 @@ class InventoryRepository {
 
       // Step 1: Build the match criteria based on input filters
       const match = {};
+
+      if (itemTypes) {
+        match["itemType"] = { $in: itemTypes };
+      }
+
+      if (["true", true].includes(excludeOnDemandKit)) {
+        match["kitAssemblyType"] = { $ne: KIT_ASSEMBLY_TYPE.onDemand };
+      }
 
       // Apply searchText filter on variantDescription with case-insensitive regex
       if (searchText) {
