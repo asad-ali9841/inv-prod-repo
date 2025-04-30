@@ -641,7 +641,8 @@ module.exports = (app) => {
       const allFetched = await service.getManyByVId(
         req.query.idArray,
         req.query.variant_ids,
-        req.query.statusArray
+        req.query.statusArray,
+        req.query.columns
       );
       return res.json(allFetched);
     } catch (error) {
@@ -677,7 +678,11 @@ module.exports = (app) => {
   });
 
   app.put("/variant/inventoryadjustment", userAuth, async (req, res) => {
-    const result = await service.performInventoryAdjustment(req.body, req.user, req.get("Authorization"));
+    const result = await service.performInventoryAdjustment(
+      req.body,
+      req.user,
+      req.get("Authorization")
+    );
     return res.json(result);
   });
 

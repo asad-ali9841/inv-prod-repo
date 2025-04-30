@@ -54,6 +54,7 @@ const {
   SUPPLIER_DATE_RANGE_FILTER_COLUMNS,
   SUPPLIER_TEXT_FILTER_COLUMNS,
   SUPPLIER_ARRAY_FILTER_COLUMNS,
+  VARIANT_ATTRIBUTES,
 } = require("../../utils/constants");
 
 const {
@@ -2116,96 +2117,150 @@ class InventoryRepository {
   }
 
   // Variant endpoints
-  async getManyProductsUsingVId(objectIds, variant_ids, statusArray) {
+  async getManyProductsUsingVId(
+    objectIds,
+    variant_ids,
+    statusArray,
+    columnsArray
+  ) {
+    // Build query object conditionally
+    const query =
+      objectIds?.length > 0
+        ? {
+            variantId: { $in: objectIds },
+          }
+        : {
+            _id: { $in: variant_ids },
+          };
+
+    // Only add status filter if statusArray has values
+    if (statusArray && statusArray.length > 0) {
+      query.status = { $in: statusArray };
+    }
+
     try {
-      // Build query object conditionally
-      const query =
-        objectIds?.length > 0
-          ? {
-              variantId: { $in: objectIds },
-            }
-          : {
-              _id: { $in: variant_ids },
-            };
+      if (columnsArray) {
+        const pipeline = [];
 
-      // Only add status filter if statusArray has values
-      if (statusArray && statusArray.length > 0) {
-        query.status = { $in: statusArray };
-      }
+        pipeline.push({
+          $match: query,
+        });
 
-      const variants = await ItemModel.find(query, {
-        _id: 1,
-        variantId: 1,
-        supplierPartNumber: 1,
-        variantImages: 1,
-        purchasePrice: 1,
-        purchaseUnits: 1,
-        unitType: 1,
-        salesUnits: 1,
-        sellingPrice: 1,
-        totalQuantity: 1,
-        variantDescription: 1,
-        leadTime: 1,
-        leadTimeUnit: 1,
-        sharedAttributes: 1, // Include the product reference
-        serialNumber: 1,
-        weight: 1,
-        weightUnit: 1,
-        length: 1,
-        width: 1,
-        height: 1,
-        lengthUnit: 1,
-        storageLocations: 1,
-        unitTypebarcodeValue: 1,
-      })
-        .populate(
-          "sharedAttributes",
-          "inspectionRequirements serialTracking lotTracking supplierName supplierId images"
-        ) // Populate the product field with only the inspectionRequirements
-        .lean(); // Use .lean() for plain JavaScript objects
-      if (variants.length > 0) {
-        // Transform data to the required structure
-        const matchedVariants = variants
-          .filter((variant) => variant && variant._id)
-          .map((variant) => ({
-            productId: variant.sharedAttributes?._id, // The product's ObjectId
-            _id: variant._id,
-            unitType: variant.unitType,
-            purchaseUnits: variant.purchaseUnits,
-            salesUnits: variant.salesUnits,
-            sellingPrice: variant.sellingPrice,
-            variantId: variant.variantId,
-            supplierPartNumber: variant.supplierPartNumber,
-            images:
-              variant.variantImages.length > 0
-                ? variant.variantImages
-                : variant.sharedAttributes.images,
-            price: variant.purchasePrice,
-            qtyAtHand: variant.totalQuantity,
-            description: variant.variantDescription,
-            leadTime: variant.leadTime,
-            productWeight: variant.weight,
-            weightUnit: variant.weightUnit,
-            productLength: variant.length,
-            productWidth: variant.width,
-            productHeight: variant.height,
-            lengthUnit: variant.lengthUnit,
-            leadTimeUnit: variant.leadTimeUnit,
-            serialNumber: variant.serialNumber,
-            supplierName: variant.sharedAttributes.supplierName,
-            supplierCustomId: variant.sharedAttributes.supplierId,
-            inspectionRequirements:
-              variant.sharedAttributes.inspectionRequirements,
-            serialTracking: variant.sharedAttributes.serialTracking,
-            lotTracking: variant.sharedAttributes.lotTracking,
-            storageLocations: variant.storageLocations,
-            baseUOMBarcodeValue: variant.unitTypebarcodeValue,
-          }));
+        pipeline.push({
+          $lookup: {
+            from: "itemshareds", // The name of the Product collection
+            localField: "sharedAttributes", // Field in Variant collection
+            foreignField: "_id", // Field in Product collection
+            as: "product", // Output array field
+          },
+        });
 
-        return matchedVariants;
+        pipeline.push({ $unwind: "$product" });
+
+        // Project stage
+        pipeline.push({
+          $project: {
+            ...columnsArray.reduce((acc, col) => {
+              if (VARIANT_ATTRIBUTES.includes(col)) {
+                // Direct access for variant attributes
+                acc[col] = 1;
+              } else {
+                // Access from product for non-variant attributes
+                acc[col] = `$product.${col}`;
+              }
+              return acc;
+            }, {}),
+            _id: 1, // Always include _id,
+            productId: "$product._id",
+            images: {
+              $cond: {
+                if: {
+                  $eq: [{ $size: { $ifNull: ["$variantImages", []] } }, 0],
+                },
+                then: "$product.images",
+                else: "$variantImages",
+              },
+            },
+          },
+        });
+
+        const variants = await ItemModel.aggregate(pipeline);
+        return variants;
       } else {
-        console.log("No variants found!");
-        return [];
+        const variants = await ItemModel.find(query, {
+          _id: 1,
+          variantId: 1,
+          supplierPartNumber: 1,
+          variantImages: 1,
+          purchasePrice: 1,
+          purchaseUnits: 1,
+          unitType: 1,
+          salesUnits: 1,
+          sellingPrice: 1,
+          totalQuantity: 1,
+          variantDescription: 1,
+          leadTime: 1,
+          leadTimeUnit: 1,
+          sharedAttributes: 1, // Include the product reference
+          serialNumber: 1,
+          weight: 1,
+          weightUnit: 1,
+          length: 1,
+          width: 1,
+          height: 1,
+          lengthUnit: 1,
+          storageLocations: 1,
+          unitTypebarcodeValue: 1,
+        })
+          .populate(
+            "sharedAttributes",
+            "inspectionRequirements serialTracking lotTracking supplierName supplierId images"
+          ) // Populate the product field with only the inspectionRequirements
+          .lean(); // Use .lean() for plain JavaScript objects
+        if (variants.length > 0) {
+          // Transform data to the required structure
+          const matchedVariants = variants
+            .filter((variant) => variant && variant._id)
+            .map((variant) => ({
+              productId: variant.sharedAttributes?._id, // The product's ObjectId
+              _id: variant._id,
+              unitType: variant.unitType,
+              purchaseUnits: variant.purchaseUnits,
+              salesUnits: variant.salesUnits,
+              sellingPrice: variant.sellingPrice,
+              variantId: variant.variantId,
+              supplierPartNumber: variant.supplierPartNumber,
+              images:
+                variant.variantImages.length > 0
+                  ? variant.variantImages
+                  : variant.sharedAttributes.images,
+              price: variant.purchasePrice,
+              qtyAtHand: variant.totalQuantity,
+              description: variant.variantDescription,
+              leadTime: variant.leadTime,
+              productWeight: variant.weight,
+              weightUnit: variant.weightUnit,
+              productLength: variant.length,
+              productWidth: variant.width,
+              productHeight: variant.height,
+              lengthUnit: variant.lengthUnit,
+              leadTimeUnit: variant.leadTimeUnit,
+              serialNumber: variant.serialNumber,
+              supplierName: variant.sharedAttributes.supplierName,
+              supplierCustomId: variant.sharedAttributes.supplierId,
+              inspectionRequirements:
+                variant.sharedAttributes.inspectionRequirements,
+              serialTracking: variant.sharedAttributes.serialTracking,
+              lotTracking: variant.sharedAttributes.lotTracking,
+              storageLocations: variant.storageLocations,
+              baseUOMBarcodeValue: variant.unitTypebarcodeValue,
+            }));
+
+          return matchedVariants;
+        } else {
+          console.log("No variants found!");
+          return [];
+        }
       }
     } catch (error) {
       console.error("Error fetching variants:", error);
