@@ -176,8 +176,8 @@ const KIT_ASSEMBLY_TYPE = {
 const VARIANT_ATTRIBUTES = [
   "variantId",
   "variantDescription",
-  "variantSupplierPartNumber",
-  "variantAlternateSupplierPartNumber",
+  "supplierPartNumber",
+  "alternateSupplierPartNumber",
   "supplierPartDescription",
   "alternateSupplierPartDescription",
   "variantImages",

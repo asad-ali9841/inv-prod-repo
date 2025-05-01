@@ -2264,6 +2264,7 @@ class InventoryRepository {
               serialTracking: variant.sharedAttributes.serialTracking,
               lotTracking: variant.sharedAttributes.lotTracking,
               storageLocations: variant.storageLocations,
+              // This value will have to be computed if auto-generate checkbox is checked
               baseUOMBarcodeValue: variant.unitTypebarcodeValue,
             }));
 
