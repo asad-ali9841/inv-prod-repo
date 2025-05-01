@@ -233,11 +233,14 @@ class InventoryService {
       : apiPayloadFormat(0, "error", "Error Fetching Products", {});
   }
 
-  async getManyByVId(idArray, variant_ids, statusArray) {
+  async getManyByVId(idArray, variant_ids, statusArray, columnsArray) {
     const allFetched = await this.respository.getManyProductsUsingVId(
       idArray ? JSON.parse(idArray) : undefined,
       variant_ids ? JSON.parse(variant_ids) : undefined,
-      statusArray ? JSON.parse(statusArray) : undefined
+      statusArray ? JSON.parse(statusArray) : undefined,
+      columnsArray && columnsArray.length > 0
+        ? JSON.parse(columnsArray)
+        : undefined
     );
     return allFetched
       ? apiPayloadFormat(1, "success", "Fetched Products", allFetched)
@@ -1614,7 +1617,7 @@ class InventoryService {
       );
     return apiPayloadFormat(1, "error", "No products found", [], "");
   }
-  
+
   async getAllProductsByTypeV3(queryParams) {
     queryParams = {
       itemColumns: [
@@ -1630,7 +1633,7 @@ class InventoryService {
         "capacityWidth",
         "capacityHeight",
         "variantImages",
-        "shortName"
+        "shortName",
       ],
       sharedColumns: [],
       page: 1,
@@ -1652,7 +1655,7 @@ class InventoryService {
       itemColumns,
       filters
     );
-    
+
     if (fetchedProducts)
       return apiPayloadFormat(
         1,
@@ -1974,13 +1977,17 @@ class InventoryService {
     const status = filterQuery.status;
     const supplierCustomId = filterQuery.supplierCustomId;
     const searchText = filterQuery.searchText;
+    const itemTypes = filterQuery.itemTypes;
+    const excludeOnDemandKit = filterQuery.excludeOnDemandKit;
 
     const fetchedProducts = await this.respository.searchProductsDBV3(
       page,
       limit,
       status,
       supplierCustomId,
-      searchText
+      searchText,
+      itemTypes,
+      excludeOnDemandKit
     );
     if (fetchedProducts)
       return apiPayloadFormat(
