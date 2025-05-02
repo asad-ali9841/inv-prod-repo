@@ -151,6 +151,18 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 },
     authKey
   ) {
+    // await generateInventoryLogs({
+    //   warehouseId: "67fde54f433f6e8e7395dcc9",
+    //   variantId: "67cac24a336e79f07ae32f59",
+    //   purchasePrice: 20,
+    //   dates: [
+    //     "2025-01-05",
+    //     "2025-02-02",
+    //     "2025-02-08",
+    //     "2025-02-19",
+    //     "2025-03-04",
+    //   ],
+    // });
     const skip = (page - 1) * limit;
 
     const {
@@ -2907,6 +2919,7 @@ class InventoryRepository {
     await doc.save();
 
     // Optional logging
+    // This method is for generating random logs for test. It should not be used like this
     // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] + quantity, quantity, 0, 1);
     // console.log("addedLogs", addedLogs);
   }
@@ -2951,6 +2964,7 @@ class InventoryRepository {
     await doc.save();
 
     // Optional: log generated inventory changes
+    // This method is for generating random logs for test. It should not be used like this
     // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] - quantity, quantity, 0, 1)
     // console.log("addedLogs", addedLogs)
   }

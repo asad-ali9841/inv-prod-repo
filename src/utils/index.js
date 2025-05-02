@@ -569,20 +569,27 @@ module.exports.generateInventoryLogs = async ({
   initialQuantity = 0,
   purchasePrice,
   numberOfEntries = 10, // Default to 10 logs
+  dates = [], // Optional array of date strings
 }) => {
   const logs = [];
   let currentQuantity = initialQuantity;
   let timestamps = [];
 
-  // Generate random timestamps within the date range
-  const startTimestamp = new Date(startDate).getTime();
-  const endTimestamp = new Date(endDate).getTime();
+  if (dates.length > 0) {
+    // Use provided dates if available
+    timestamps = dates.map((date) => new Date(date).getTime());
+    numberOfEntries = timestamps.length; // Override numberOfEntries with dates length
+  } else {
+    // Generate random timestamps within the date range
+    const startTimestamp = new Date(startDate).getTime();
+    const endTimestamp = new Date(endDate).getTime();
 
-  for (let i = 0; i < numberOfEntries; i++) {
-    const randomTimestamp = new Date(
-      startTimestamp + Math.random() * (endTimestamp - startTimestamp)
-    ).getTime();
-    timestamps.push(randomTimestamp);
+    for (let i = 0; i < numberOfEntries; i++) {
+      const randomTimestamp = new Date(
+        startTimestamp + Math.random() * (endTimestamp - startTimestamp)
+      ).getTime();
+      timestamps.push(randomTimestamp);
+    }
   }
 
   // Sort timestamps chronologically
@@ -597,9 +604,9 @@ module.exports.generateInventoryLogs = async ({
 
     let finalQuantity;
     if (transactionType === INVENTORY_TRANSACTION_TYPES.PURCHASE_ORDER) {
-      finalQuantity = currentQuantity + randomChange; // Increase stock
+      finalQuantity = currentQuantity + randomChange;
     } else {
-      finalQuantity = Math.max(0, currentQuantity - randomChange); // Decrease stock, ensure it doesn't go below 0
+      finalQuantity = Math.max(0, currentQuantity - randomChange);
     }
 
     logs.push({
@@ -612,11 +619,10 @@ module.exports.generateInventoryLogs = async ({
       createdAt: timestamps[i],
     });
 
-    currentQuantity = finalQuantity; // Update initial quantity for next log
+    currentQuantity = finalQuantity;
   }
 
-  // Insert into MongoDB
-  let generatedLogs = await InventoryLog.insertMany(logs);
+  const generatedLogs = await InventoryLog.insertMany(logs);
   console.log(`${logs.length} inventory logs generated successfully.`);
   return generatedLogs;
 };
