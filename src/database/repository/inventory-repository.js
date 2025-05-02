@@ -2222,6 +2222,7 @@ class InventoryRepository {
           lengthUnit: 1,
           storageLocations: 1,
           unitTypebarcodeValue: 1,
+          itemType: 1,
         })
           .populate(
             "sharedAttributes",
@@ -2266,6 +2267,7 @@ class InventoryRepository {
               storageLocations: variant.storageLocations,
               // This value will have to be computed if auto-generate checkbox is checked
               baseUOMBarcodeValue: variant.unitTypebarcodeValue,
+              itemType: variant.itemType,
             }));
 
           return matchedVariants;
