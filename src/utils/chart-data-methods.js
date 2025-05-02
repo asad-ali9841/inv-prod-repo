@@ -429,26 +429,32 @@ const getTotalInventoryValueChartData = async ({
   }
 };
 
-const fetchTotalInventoryValuePerCategoryData = async (
-  startDate,
+const fetchTotalInventoryValuePerCategoryAsOfDate = async (
   endDate,
-  warehouseId,
-  dateFormat
+  warehouseId
 ) => {
-  const result = await InventoryLog.aggregate([
+  // Now aggregate again to divide value by number of categories per item
+  // But instead of doing it manually in JS, we'll do it right in aggregation:
+  // Go back and calculate category count, then divide properly:
+
+  const finalData = await InventoryLog.aggregate([
     {
       $match: {
         warehouseId,
-        createdAt: {
-          $gte: startDate.getTime(),
-          $lte: endDate.getTime(),
-        },
+        createdAt: { $lte: endDate.getTime() },
+      },
+    },
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: "$variantId",
+        latestLog: { $first: "$$ROOT" },
       },
     },
     {
       $lookup: {
         from: "items",
-        localField: "variantId",
+        localField: "_id",
         foreignField: "_id",
         as: "variant",
       },
@@ -477,40 +483,90 @@ const fetchTotalInventoryValuePerCategoryData = async (
             ["Uncategorized"],
           ],
         },
-      },
-    },
-    { $unwind: "$categories" }, // Unwind each category
-    {
-      $group: {
-        _id: {
-          category: "$categories",
-          bucket: {
-            $dateToString: {
-              format: dateFormat,
-              date: { $toDate: "$createdAt" },
-            },
-          },
-        },
-        totalInventoryValue: { $sum: "$inventoryValue" },
-      },
-    },
-    {
-      $group: {
-        _id: "$_id.bucket",
-        categories: {
-          $push: {
-            category: "$_id.category",
-            totalInventoryValue: "$totalInventoryValue",
-          },
+        categoryCount: {
+          $cond: [
+            { $gt: [{ $size: { $ifNull: ["$product.category", []] } }, 0] },
+            { $size: "$product.category" },
+            1,
+          ],
         },
       },
     },
     {
-      $sort: { _id: 1 },
+      $project: {
+        categories: 1,
+        inventoryValuePerCategory: {
+          $divide: ["$latestLog.inventoryValue", "$categoryCount"],
+        },
+      },
+    },
+    { $unwind: "$categories" },
+    {
+      $group: {
+        _id: "$categories",
+        totalInventoryValue: { $sum: "$inventoryValuePerCategory" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        category: "$_id",
+        totalInventoryValue: 1,
+      },
     },
   ]);
 
+  // Convert to object format: { categoryName: totalInventoryValue }
+  const result = {};
+  for (const entry of finalData) {
+    result[entry.category] = entry.totalInventoryValue;
+  }
+
   return result;
+};
+
+const fetchTotalInventoryValuePerCategoryData = async (
+  startDate,
+  endDate,
+  warehouseId,
+  addBGColor = false
+) => {
+  const { labels, endDates } = generateDateLabelsAndEndDates(
+    startDate,
+    endDate
+  );
+  const categoriesMap = new Map();
+
+  // Fetch inventory data for each end date
+  for (const endDate of endDates) {
+    const inventoryData = await fetchTotalInventoryValuePerCategoryAsOfDate(
+      endDate,
+      warehouseId
+    );
+    const color = randomColors[categoriesMap.size % randomColors.length];
+
+    // Update category-wise data
+    for (const category in inventoryData) {
+      if (!categoriesMap.has(category)) {
+        categoriesMap.set(category, {
+          label: category,
+          data: [],
+          borderColor: color, // Cycle through colors
+          backgroundColor: addBGColor ? color : "#FFF", // Or any other default
+          tension: 0.4,
+        });
+      }
+      categoriesMap.get(category).data.push(inventoryData[category] || 0); // push 0 if category doesnt exist
+    }
+  }
+
+  // Convert the map to the datasets array
+  const datasets = Array.from(categoriesMap.values());
+  const chartData = {
+    labels,
+    datasets,
+  };
+  return chartData;
 };
 
 const getTotalInventoryValuePerCategoryChartData = async ({
@@ -522,211 +578,60 @@ const getTotalInventoryValuePerCategoryChartData = async ({
 }) => {
   const startDate = new Date(startDateStr);
   const endDate = new Date(endDateStr);
-  const rangeInMs = endDate - startDate;
-  const rangeInDays = rangeInMs / (1000 * 60 * 60 * 24);
 
   if ([ChartType.BarChart, ChartType.LineChart].includes(chartType)) {
-    let dateFormat, labelPrefix;
-    if (rangeInDays <= 14) {
-      dateFormat = "%Y-%m-%d"; // Daily
-      labelPrefix = "Day ";
-    } else if (rangeInDays <= 45) {
-      dateFormat = "%Y-%U"; // Weekly
-      labelPrefix = "Week ";
-    } else if (rangeInDays <= 150) {
-      dateFormat = "%Y-%m"; // Monthly
-      labelPrefix = "Month ";
-    } else {
-      dateFormat = "%Y"; // Yearly
-      labelPrefix = "Year ";
-    }
-
     const currentData = await fetchTotalInventoryValuePerCategoryData(
       startDate,
       endDate,
-      warehouseId,
-      dateFormat
+      warehouseId
     );
 
-    // Map to collect all categories per bucket (date-based)
-    const categoryMap = new Map();
-
-    currentData.forEach((entry) => {
-      const dateKey = entry._id;
-      if (!categoryMap.has(dateKey)) {
-        categoryMap.set(dateKey, new Map());
-      }
-
-      const bucketMap = categoryMap.get(dateKey);
-
-      entry.categories.forEach((catEntry) => {
-        let categories = catEntry.category || ["Uncategorized"];
-
-        // Ensure it's an array
-        if (!Array.isArray(categories)) {
-          categories = [categories];
-        }
-
-        // Distribute the inventoryValue equally among the categories
-        const valuePerCategory =
-          catEntry.totalInventoryValue / categories.length;
-
-        categories.forEach((category) => {
-          const currentTotal = bucketMap.get(category) || 0;
-          bucketMap.set(
-            category,
-            roundToTwoDecimals(currentTotal + valuePerCategory)
-          );
-        });
-      });
-    });
-
-    // Get sorted date labels
-    const labels = Array.from(categoryMap.keys()).sort();
-    const allCategories = new Set();
-
-    // Collect all categories
-    categoryMap.forEach((bucketMap) => {
-      bucketMap.forEach((_val, category) => {
-        allCategories.add(category);
-      });
-    });
-
-    const sortedCategories = Array.from(allCategories);
-
-    // Create datasets per category
-    const datasets = sortedCategories.map((category, index) => {
-      const color = randomColors[index % randomColors.length];
-      const data = labels.map((label) => {
-        const bucket = categoryMap.get(label);
-        return bucket?.get(category) || 0;
-      });
-
-      return {
-        label: category,
-        data,
-        borderColor: color,
-        backgroundColor: color,
-        ...(chartType === ChartType.PieChart ? pieChartStyles : {}),
-      };
-    });
-
-    return {
-      labels: labels.map((_, idx) => `${labelPrefix}${idx + 1}`),
-      datasets,
-    };
+    return currentData;
   }
 
   if ([ChartType.PieChart, ChartType.DonutChart].includes(chartType)) {
     const endOfDay = new Date(endDate);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const result = await InventoryLog.aggregate([
-      {
-        $match: {
-          warehouseId,
-          createdAt: { $lte: endOfDay.getTime() },
-        },
-      },
-      {
-        $sort: { createdAt: -1 },
-      },
-      {
-        $group: {
-          _id: "$variantId",
-          latestLog: { $first: "$$ROOT" },
-        },
-      },
-      {
-        $lookup: {
-          from: "items",
-          localField: "_id",
-          foreignField: "_id",
-          as: "variant",
-        },
-      },
-      {
-        $unwind: "$variant",
-      },
-      {
-        $lookup: {
-          from: "itemshareds",
-          localField: "variant.sharedAttributes",
-          foreignField: "_id",
-          as: "product",
-        },
-      },
-      {
-        $unwind: {
-          path: "$product",
-          preserveNullAndEmptyArrays: true,
-        },
-      },
-      {
-        $project: {
-          inventoryValue: "$latestLog.inventoryValue",
-          categories: {
-            $cond: [
-              { $gt: [{ $size: { $ifNull: ["$product.category", []] } }, 0] },
-              "$product.category",
-              ["Uncategorized"],
-            ],
-          },
-        },
-      },
-    ]);
-
-    const categoryTotals = new Map();
-
-    result.forEach((entry) => {
-      const categories = Array.isArray(entry.categories)
-        ? entry.categories
-        : [entry.categories || "Uncategorized"];
-
-      const valuePerCategory = entry.inventoryValue / categories.length;
-
-      categories.forEach((category) => {
-        const prev = categoryTotals.get(category) || 0;
-        categoryTotals.set(
-          category,
-          roundToTwoDecimals(prev + valuePerCategory)
-        );
-      });
-    });
-
-    const labels = Array.from(categoryTotals.keys());
-    const data = labels.map((label) => categoryTotals.get(label));
-    const colors = labels.map(
-      (_, index) => randomColors[index % randomColors.length]
+    const currentData = await fetchTotalInventoryValuePerCategoryAsOfDate(
+      endOfDay,
+      warehouseId
     );
 
+    const sampleData = Object.entries(currentData).map(([label, value]) => ({
+      label,
+      value,
+    }));
+
+    const backgroundColors = sampleData.map(
+      (_, index) => randomColors[index % randomColors.length]
+    );
+    const borderColors = backgroundColors.map((color) => color);
+    const chartData = {
+      labels: sampleData.map((item) => item.label),
+      datasets: [
+        {
+          data: sampleData.map((item) => item.value),
+          backgroundColor: backgroundColors,
+          borderColor: borderColors,
+          borderWidth: 1,
+        },
+      ],
+    };
+
     if (chartType === ChartType.PieChart) {
-      return {
-        labels,
-        datasets: [
-          {
-            label: dataSource,
-            data,
-            backgroundColor: colors,
-          },
-        ],
-      };
+      return chartData;
     } else {
+      const totalInventoryValue = await fetchInventoryValueAsOfDate(
+        endOfDay,
+        warehouseId
+      );
       const centerContent = `Total\n $${roundToTwoDecimals(
-        data.reduce((sum, val) => sum + (val || 0), 0)
+        totalInventoryValue
       )}`;
       return {
         centerContent,
-        chartData: {
-          labels,
-          datasets: [
-            {
-              label: dataSource,
-              data,
-              backgroundColor: colors,
-            },
-          ],
-        },
+        chartData,
       };
     }
   }
