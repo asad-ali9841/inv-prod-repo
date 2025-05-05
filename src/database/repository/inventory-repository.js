@@ -151,18 +151,6 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 },
     authKey
   ) {
-    // await generateInventoryLogs({
-    //   warehouseId: "67fde54f433f6e8e7395dcc9",
-    //   variantId: "67cac24a336e79f07ae32f59",
-    //   purchasePrice: 20,
-    //   dates: [
-    //     "2025-01-05",
-    //     "2025-02-02",
-    //     "2025-02-08",
-    //     "2025-02-19",
-    //     "2025-03-04",
-    //   ],
-    // });
     const skip = (page - 1) * limit;
 
     const {
@@ -351,6 +339,61 @@ class InventoryRepository {
               },
               0,
             ],
+          },
+          qtyAtMainLocation: {
+            $let: {
+              vars: {
+                locations: {
+                  $getField: {
+                    field: "$warehouseIds",
+                    input: "$storageLocations",
+                  },
+                },
+              },
+              in: {
+                $let: {
+                  vars: {
+                    mainLocation: {
+                      $first: {
+                        $filter: {
+                          input: "$$locations",
+                          as: "loc",
+                          cond: { $eq: ["$$loc.isMain", true] },
+                        },
+                      },
+                    },
+                  },
+                  in: "$$mainLocation.itemQuantity",
+                },
+              },
+            },
+          },
+          qtyAtOtherLocations: {
+            $let: {
+              vars: {
+                locations: {
+                  $getField: {
+                    field: "$warehouseIds",
+                    input: "$storageLocations",
+                  },
+                },
+              },
+              in: {
+                $sum: {
+                  $map: {
+                    input: {
+                      $filter: {
+                        input: "$$locations",
+                        as: "loc",
+                        cond: { $ne: ["$$loc.isMain", true] },
+                      },
+                    },
+                    as: "loc",
+                    in: "$$loc.itemQuantity",
+                  },
+                },
+              },
+            },
           },
         },
       });
