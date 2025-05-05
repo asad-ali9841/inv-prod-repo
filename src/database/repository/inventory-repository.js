@@ -3000,7 +3000,6 @@ class InventoryRepository {
             warehouseId,
             startDateStr,
             endDateStr,
-            dataSource,
           });
           return data;
         }

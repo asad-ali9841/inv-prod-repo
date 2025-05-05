@@ -574,7 +574,6 @@ const getTotalInventoryValuePerCategoryChartData = async ({
   warehouseId,
   startDateStr,
   endDateStr,
-  dataSource,
 }) => {
   const startDate = new Date(startDateStr);
   const endDate = new Date(endDateStr);
