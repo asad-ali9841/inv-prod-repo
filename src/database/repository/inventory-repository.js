@@ -340,6 +340,61 @@ class InventoryRepository {
               0,
             ],
           },
+          qtyAtMainLocation: {
+            $let: {
+              vars: {
+                locations: {
+                  $getField: {
+                    field: "$warehouseIds",
+                    input: "$storageLocations",
+                  },
+                },
+              },
+              in: {
+                $let: {
+                  vars: {
+                    mainLocation: {
+                      $first: {
+                        $filter: {
+                          input: "$$locations",
+                          as: "loc",
+                          cond: { $eq: ["$$loc.isMain", true] },
+                        },
+                      },
+                    },
+                  },
+                  in: "$$mainLocation.itemQuantity",
+                },
+              },
+            },
+          },
+          qtyAtOtherLocations: {
+            $let: {
+              vars: {
+                locations: {
+                  $getField: {
+                    field: "$warehouseIds",
+                    input: "$storageLocations",
+                  },
+                },
+              },
+              in: {
+                $sum: {
+                  $map: {
+                    input: {
+                      $filter: {
+                        input: "$$locations",
+                        as: "loc",
+                        cond: { $ne: ["$$loc.isMain", true] },
+                      },
+                    },
+                    as: "loc",
+                    in: "$$loc.itemQuantity",
+                  },
+                },
+              },
+            },
+          },
         },
       });
 
@@ -2131,6 +2186,8 @@ class InventoryRepository {
   async getManyProductsUsingVId(
     objectIds,
     variant_ids,
+    descriptionArray,
+    skus,
     statusArray,
     columnsArray
   ) {
@@ -2140,6 +2197,12 @@ class InventoryRepository {
         ? {
             variantId: { $in: objectIds },
           }
+        : descriptionArray?.length > 0
+        ? {
+            variantDescription: { $in: descriptionArray },
+          }
+        : skus?.length > 0
+        ? { SKU: { $in: skus } }
         : {
             _id: { $in: variant_ids },
           };
@@ -2150,7 +2213,7 @@ class InventoryRepository {
     }
 
     try {
-      if (columnsArray) {
+      if (columnsArray && columnsArray.length > 0) {
         const pipeline = [];
 
         pipeline.push({
@@ -2909,6 +2972,7 @@ class InventoryRepository {
     await doc.save();
 
     // Optional logging
+    // This method is for generating random logs for test. It should not be used like this
     // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] + quantity, quantity, 0, 1);
     // console.log("addedLogs", addedLogs);
   }
@@ -2953,6 +3017,7 @@ class InventoryRepository {
     await doc.save();
 
     // Optional: log generated inventory changes
+    // This method is for generating random logs for test. It should not be used like this
     // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] - quantity, quantity, 0, 1)
     // console.log("addedLogs", addedLogs)
   }
@@ -2988,7 +3053,6 @@ class InventoryRepository {
             warehouseId,
             startDateStr,
             endDateStr,
-            dataSource,
           });
           return data;
         }

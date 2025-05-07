@@ -641,6 +641,8 @@ module.exports = (app) => {
       const allFetched = await service.getManyByVId(
         req.query.idArray,
         req.query.variant_ids,
+        req.query.descriptions,
+        req.query.skus,
         req.query.statusArray,
         req.query.columns
       );
