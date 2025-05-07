@@ -2186,6 +2186,8 @@ class InventoryRepository {
   async getManyProductsUsingVId(
     objectIds,
     variant_ids,
+    descriptionArray,
+    skus,
     statusArray,
     columnsArray
   ) {
@@ -2195,6 +2197,12 @@ class InventoryRepository {
         ? {
             variantId: { $in: objectIds },
           }
+        : descriptionArray?.length > 0
+        ? {
+            variantDescription: { $in: descriptionArray },
+          }
+        : skus?.length > 0
+        ? { SKU: { $in: skus } }
         : {
             _id: { $in: variant_ids },
           };
@@ -2205,7 +2213,7 @@ class InventoryRepository {
     }
 
     try {
-      if (columnsArray) {
+      if (columnsArray && columnsArray.length > 0) {
         const pipeline = [];
 
         pipeline.push({

@@ -233,14 +233,33 @@ class InventoryService {
       : apiPayloadFormat(0, "error", "Error Fetching Products", {});
   }
 
-  async getManyByVId(idArray, variant_ids, statusArray, columnsArray) {
+  async getManyByVId(
+    idArray,
+    variant_ids,
+    descriptionArray,
+    skus,
+    statusArray,
+    columnsArray
+  ) {
     const allFetched = await this.respository.getManyProductsUsingVId(
-      idArray ? JSON.parse(idArray) : undefined,
-      variant_ids ? JSON.parse(variant_ids) : undefined,
-      statusArray ? JSON.parse(statusArray) : undefined,
-      columnsArray && columnsArray.length > 0
-        ? JSON.parse(columnsArray)
-        : undefined
+      ["", null, undefined, "null", "undefined"].includes(idArray)
+        ? undefined
+        : JSON.parse(idArray),
+      ["", null, undefined, "null", "undefined"].includes(variant_ids)
+        ? undefined
+        : JSON.parse(variant_ids),
+      ["", null, undefined, "null", "undefined"].includes(descriptionArray)
+        ? undefined
+        : JSON.parse(descriptionArray),
+      ["", null, undefined, "null", "undefined"].includes(skus)
+        ? undefined
+        : JSON.parse(skus),
+      ["", null, undefined, "null", "undefined"].includes(statusArray)
+        ? undefined
+        : JSON.parse(statusArray),
+      ["", null, undefined, "null", "undefined"].includes(columnsArray)
+        ? undefined
+        : JSON.parse(columnsArray)
     );
     return allFetched
       ? apiPayloadFormat(1, "success", "Fetched Products", allFetched)
