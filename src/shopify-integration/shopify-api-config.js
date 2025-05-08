@@ -10,7 +10,12 @@ const {
 const shopify = shopifyApi({
   apiKey: shopifyClientId,
   apiSecretKey: shopifyClientSecret,
-  scopes: ["write_products", "read_products"],
+  scopes: [
+    "write_products",
+    "read_products",
+    "read_inventory",
+    "write_inventory",
+  ],
   hostName: baseURL,
   apiVersion: LATEST_API_VERSION,
   isEmbeddedApp: false,

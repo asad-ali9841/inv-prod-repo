@@ -72,6 +72,8 @@ const {
 } = require("../../utils/chart-data-methods");
 const {
   searchShopifyProducts,
+  getShopifyProductById,
+  updateShopifyInventoryQuantity,
 } = require("../../shopify-integration/shopify-product-service");
 
 /*
@@ -154,6 +156,12 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 },
     authKey
   ) {
+    // const result = await searchShopifyProducts("Strider 12 Sport Red");
+    // const result = await getShopifyProductById(7560012857409)
+    // const result = await updateShopifyInventoryQuantity(
+    //   "Strider 12 Sport Red",
+    //   100
+    // );
     const skip = (page - 1) * limit;
 
     const {
