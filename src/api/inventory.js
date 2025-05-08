@@ -697,11 +697,6 @@ module.exports = (app) => {
     return res.json(result);
   });
 
-  app.put("/variant/addinventorylogs", userAuth, async (req, res) => {
-    const result = await service.addInventoryLogs(req.body);
-    return res.json(result);
-  });
-
   app.post("/getchartdata", async (req, res, next) => {
     try {
       const chartData = await service.getChartData(
