@@ -70,6 +70,9 @@ const {
   getTotalInventoryValueChartData,
   getTotalInventoryValuePerCategoryChartData,
 } = require("../../utils/chart-data-methods");
+const {
+  searchShopifyProducts,
+} = require("../../shopify-integration/shopify-product-service");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data

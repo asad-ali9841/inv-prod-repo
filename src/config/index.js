@@ -29,4 +29,7 @@ module.exports = {
   LOCAL_ACCESS_KEY: process.env.LOCAL_ACCESS_KEY,
   LOCAL_SECRET_KEY: process.env.LOCAL_SECRET_KEY,
   CLOUDFRONT_BASE_URL: process.env.CLOUDFRONT_BASE_URL,
+  shopifyClientId: process.env.shopify_client_id,
+  shopifyClientSecret: process.env.shopify_client_secret,
+  shopifyStoreName: process.env.shopify_store_name,
 };
