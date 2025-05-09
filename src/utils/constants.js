@@ -266,6 +266,7 @@ const productLabelsToKeys = {
   Color: "color",
   Size: "size",
   Finish: "finish",
+  "Material Composition": "materialComposition",
   "Weight*": "weight",
   "Length*": "length",
   "Width*": "width",
@@ -290,7 +291,6 @@ const productLabelsToKeys = {
   "Handling Instructions": "handlingInstructions",
   "Inspection Requirements": "inspectionRequirements",
   "Shelf Space Requirements": "shelfSpaceRequirements",
-  "Material Composition": "materialComposition",
   "Customization Options": "customizationOptions",
   "Associated Services": "associatedServices",
   "Safety Information": "safetyInfo",
@@ -437,6 +437,13 @@ const randomColors = [
 
 const itemsAtLocationColumns = ["qtyReservedBy"];
 
+const shopifyOptionsLabels = [
+  "Color",
+  "Size",
+  "Finish",
+  "Material Composition",
+];
+
 module.exports = {
   PRODUCT_ARRAY_COLUMNS,
   NEW_VARIANT_STATUS_FROM_NEW_PRODUCT_STATUS,
@@ -474,4 +481,5 @@ module.exports = {
   SUPPLIER_ARRAY_FILTER_COLUMNS,
   SUPPLIER_DATE_RANGE_FILTER_COLUMNS,
   SUPPLIER_TEXT_FILTER_COLUMNS,
+  shopifyOptionsLabels,
 };

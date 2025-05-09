@@ -35,6 +35,8 @@ const {
   generateInventoryLogs,
   parseArrayFilter,
   parseDateRangeFilter,
+  getShopifyCreateProductPayload,
+  getTotalQuantityForAllWarehouses,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -74,7 +76,9 @@ const {
   searchShopifyProducts,
   getShopifyProductById,
   updateShopifyInventoryQuantity,
+  createShopifyProduct,
 } = require("../../shopify-integration/shopify-product-service");
+const { hasShopifyIntegration } = require("../../config");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -157,11 +161,20 @@ class InventoryRepository {
     authKey
   ) {
     // const result = await searchShopifyProducts("Strider 12 Sport Red");
-    // const result = await getShopifyProductById(7560012857409)
+    // const result = await getShopifyProductById(7560012857409);
     // const result = await updateShopifyInventoryQuantity(
     //   "Strider 12 Sport Red",
     //   100
     // );
+    // console.log("result:", result);
+    // (
+    //   await ItemSharedAttributesModel.find({ status: ITEM_STATUS.deleted })
+    // ).forEach((product) => {
+    //   product.variantIds.forEach(async (variant_id) => {
+    //     await ItemModel.deleteOne({ _id: variant_id });
+    //   });
+    // });
+    // await ItemSharedAttributesModel.deleteMany({ status: ITEM_STATUS.deleted });
     const skip = (page - 1) * limit;
 
     const {
@@ -1340,6 +1353,26 @@ class InventoryRepository {
 
         // Extract the IDs of the created Variants
         variantIds = createdVariants.map((variant) => variant._id);
+
+        if (hasShopifyIntegration) {
+          const shopifyFullProduct = {
+            ...sharedData.toObject(),
+            variants: createdVariants,
+          };
+
+          for (
+            let variantIndex = 0;
+            variantIndex < createdVariants.length;
+            variantIndex++
+          ) {
+            const shopifyPayload = getShopifyCreateProductPayload(
+              shopifyFullProduct,
+              variantIndex
+            );
+            console.log("payload for shopify:", shopifyPayload);
+            await createShopifyProduct(shopifyPayload);
+          }
+        }
       }
 
       // Update the Product document with the Variant references, if any
@@ -2802,6 +2835,13 @@ class InventoryRepository {
       // Push activity
       variant.activity.push(activity);
 
+      if (hasShopifyIntegration) {
+        await updateShopifyInventoryQuantity(
+          variant.variantDescription,
+          getTotalQuantityForAllWarehouses(variant.totalQuantity)
+        );
+      }
+
       // Save the updated variant
       await variant.save({ session });
 
@@ -2967,6 +3007,7 @@ class InventoryRepository {
       doc.totalQuantity[warehouseId] =
         (doc.totalQuantity[warehouseId] || 0) + quantity;
       doc.markModified("totalQuantity");
+      const totalItemQuantity = doc.totalQuantity[warehouseId];
 
       // 4) Log the activity
       doc.activity.push(activity);
@@ -2976,16 +3017,23 @@ class InventoryRepository {
         warehouseId,
         poId,
         initialQuantity: oldTotalQuantity,
-        finalQuantity: doc.totalQuantity[warehouseId],
+        finalQuantity: totalItemQuantity,
         transactionType,
         inventoryValue: roundToTwoDecimals(
-          doc.totalQuantity[warehouseId] * doc.purchasePrice
+          totalItemQuantity * doc.purchasePrice
         ),
       });
 
       await newInventoryLog.save({ session });
 
       doc.inventoryLogs.push(newInventoryLog._id);
+
+      if (hasShopifyIntegration) {
+        await updateShopifyInventoryQuantity(
+          doc.variantDescription,
+          totalItemQuantity
+        );
+      }
 
       // 5) Save changes
       await doc.save({ session });
@@ -3045,6 +3093,7 @@ class InventoryRepository {
       doc.totalQuantity[warehouseId] =
         (doc.totalQuantity[warehouseId] || 0) - quantity;
       doc.markModified("totalQuantity");
+      const totalItemQuantity = doc.totalQuantity[warehouseId];
 
       // 4) Log activity
       doc.activity.push(activity);
@@ -3054,16 +3103,23 @@ class InventoryRepository {
         warehouseId,
         soId,
         initialQuantity: oldTotalQuantity,
-        finalQuantity: doc.totalQuantity[warehouseId],
+        finalQuantity: totalItemQuantity,
         transactionType,
         inventoryValue: roundToTwoDecimals(
-          doc.totalQuantity[warehouseId] * doc.purchasePrice
+          totalItemQuantity * doc.purchasePrice
         ),
       });
 
       await newInventoryLog.save({ session });
 
       doc.inventoryLogs.push(newInventoryLog._id);
+
+      if (hasShopifyIntegration) {
+        await updateShopifyInventoryQuantity(
+          doc.variantDescription,
+          totalItemQuantity
+        );
+      }
 
       // 5) Save the document
       await doc.save({ session });

@@ -32,4 +32,8 @@ module.exports = {
   shopifyClientId: process.env.shopify_client_id,
   shopifyClientSecret: process.env.shopify_client_secret,
   shopifyStoreName: process.env.shopify_store_name,
+  hasShopifyIntegration:
+    Boolean(process.env.shopify_client_id) &&
+    Boolean(process.env.shopify_client_secret) &&
+    Boolean(process.env.shopify_store_name),
 };

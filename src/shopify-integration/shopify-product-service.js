@@ -207,3 +207,21 @@ module.exports.updateShopifyInventoryQuantity = async (title, newQuantity) => {
     throw error;
   }
 };
+
+module.exports.createShopifyProduct = async (productData) => {
+  try {
+    const client = await getRestClient();
+
+    // Create the product on Shopify
+    const response = await client.post({
+      path: "products",
+      data: { product: productData },
+    });
+    console.log("created product:", response.body.product);
+
+    return response.body.product;
+  } catch (error) {
+    console.error("Error creating product on Shopify:", error);
+    throw error;
+  }
+};
