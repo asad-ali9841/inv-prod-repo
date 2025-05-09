@@ -16,6 +16,7 @@ const {
   formatBillOfMaterial,
   formatDateFromTimestamp,
   mapArrayToObject,
+  getTotalQuantityForAllWarehouses,
 } = require("../utils/index");
 var qs = require("qs");
 const {
@@ -354,7 +355,17 @@ module.exports = (app) => {
             }
           } else if (field.startsWith("variants.")) {
             const variantAttribute = product.variant[correctedField];
-            if (PRODUCT_AND_VARIANT_ARRAY_COLUMNS.includes(correctedField)) {
+            if (correctedField === "totalQuantity") {
+              row.push(
+                variantAttribute
+                  ? `${getTotalQuantityForAllWarehouses(variantAttribute)} ${
+                      product.variant.unitType.value
+                    }`
+                  : ""
+              );
+            } else if (
+              PRODUCT_AND_VARIANT_ARRAY_COLUMNS.includes(correctedField)
+            ) {
               row.push(variantAttribute ? variantAttribute.join(", ") : "");
             } else if (VARAINT_OBJECT_COLUMNS.includes(correctedField)) {
               row.push(variantAttribute ? variantAttribute.value : "");
