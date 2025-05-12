@@ -160,13 +160,6 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 },
     authKey
   ) {
-    // const result = await searchShopifyProducts("Strider 12 Sport Red");
-    // const result = await getShopifyProductById(7560012857409);
-    // const result = await updateShopifyInventoryQuantity(
-    //   "Strider 12 Sport Red",
-    //   100
-    // );
-    // console.log("result:", result);
     // (
     //   await ItemSharedAttributesModel.find({ status: ITEM_STATUS.deleted })
     // ).forEach((product) => {

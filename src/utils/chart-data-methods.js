@@ -235,20 +235,22 @@ const getAggregatedValue = async (start, end, warehouseId, aggregation) => {
   }
 
   switch (aggregation) {
-    case ChartAggregation.Average:
+    case ChartAggregation.Average: {
       const sum = totalInventoryValues.reduce((acc, value) => acc + value, 0);
       return sum / totalInventoryValues.length;
+    }
     case ChartAggregation.Min:
       return Math.min(...totalInventoryValues);
     case ChartAggregation.Max:
       return Math.max(...totalInventoryValues);
-    default:
+    default: {
       console.warn("Unsupported aggregation type, returning average");
       const sumValue = totalInventoryValues.reduce(
         (acc, value) => acc + value,
         0
       );
       return sumValue / totalInventoryValues.length;
+    }
   }
 };
 

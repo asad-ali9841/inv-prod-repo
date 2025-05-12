@@ -119,7 +119,7 @@ module.exports.getShopifyProductByTitle = async (title) => {
 
     return product;
   } catch (error) {
-    console.error(`Error searching products with query "${query}":`, error);
+    console.error(`Error searching products with title "${title}":`, error);
     throw error;
   }
 };

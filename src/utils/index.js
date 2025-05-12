@@ -720,7 +720,7 @@ module.exports.getShopifyCreateProductPayload = (
 
   return {
     title: currentVariant.variantDescription,
-    body_html: `<p>${fullProduct.description}</p>`,
+    body_html: fullProduct.description,
     vendor: fullProduct.supplierName,
     product_type: fullProduct.category?.join(", "),
     status: currentVariant.status,
