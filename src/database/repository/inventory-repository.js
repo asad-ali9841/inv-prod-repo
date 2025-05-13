@@ -3014,28 +3014,28 @@ class InventoryRepository {
       // 4) Log the activity
       doc.activity.push(activity);
 
-      const newInventoryLog = new InventoryLog({
-        variantId: doc._id,
-        warehouseId,
-        poId,
-        initialQuantity: oldTotalQuantity,
-        finalQuantity: totalItemQuantity,
-        transactionType,
-        inventoryValue: roundToTwoDecimals(
-          totalItemQuantity * doc.purchasePrice
-        ),
-      });
+      // const newInventoryLog = new InventoryLog({
+      //   variantId: doc._id,
+      //   warehouseId,
+      //   poId,
+      //   initialQuantity: oldTotalQuantity,
+      //   finalQuantity: totalItemQuantity,
+      //   transactionType,
+      //   inventoryValue: roundToTwoDecimals(
+      //     totalItemQuantity * doc.purchasePrice
+      //   ),
+      // });
 
-      await newInventoryLog.save({ session });
+      // await newInventoryLog.save({ session });
 
-      doc.inventoryLogs.push(newInventoryLog._id);
+      // doc.inventoryLogs.push(newInventoryLog._id);
 
-      if (hasShopifyIntegration) {
-        await updateShopifyInventoryQuantity(
-          doc.variantDescription,
-          totalItemQuantity
-        );
-      }
+      // if (hasShopifyIntegration) {
+      //   await updateShopifyInventoryQuantity(
+      //     doc.variantDescription,
+      //     totalItemQuantity
+      //   );
+      // }
 
       // 5) Save changes
       await doc.save({ session });
