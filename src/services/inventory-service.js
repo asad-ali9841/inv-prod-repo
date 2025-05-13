@@ -2127,21 +2127,6 @@ class InventoryService {
     }
   }
 
-  async addInventoryLogs(payload) {
-    try {
-      const addedLogs = await this.respository.addInventoryLogs(payload);
-
-      return apiPayloadFormat(1, "success", "Inventory logs added", addedLogs);
-    } catch (error) {
-      return apiPayloadFormat(
-        0,
-        "error",
-        `Error updating inventory logs: ${error.message}`,
-        []
-      );
-    }
-  }
-
   async getChartData(queryParams, authKey) {
     try {
       const chartData = await this.respository.getChartData(

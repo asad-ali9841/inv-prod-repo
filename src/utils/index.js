@@ -22,7 +22,11 @@ const {
 } = require("@aws-sdk/client-s3");
 // keep this import here for the createBarcode method in case barcodes are needed in the future.
 // const bwipjs = require("@bwip-js/node");
-const { INVENTORY_TRANSACTION_TYPES } = require("./constants");
+const {
+  INVENTORY_TRANSACTION_TYPES,
+  shopifyOptionsLabels,
+  productLabelsToKeys,
+} = require("./constants");
 const InventoryLog = require("../database/models/InventoryLog");
 
 const s3 = new S3Client({
@@ -657,5 +661,93 @@ module.exports.parseDateRangeFilter = (filterParamValue) => {
   return {
     startDate: new Date(numberStartDate),
     endDate: new Date(numberEndDate),
+  };
+};
+
+module.exports.getTotalQuantityForAllWarehouses = (totalQuantity) => {
+  if (!totalQuantity || Object.keys(totalQuantity) === 0) return 0;
+
+  return Object.values(totalQuantity).reduce((acc, curr) => acc + curr, 0);
+};
+
+function getShopifyProductOptionsPayload(variant) {
+  if (!variant) return [];
+  const options = [];
+
+  shopifyOptionsLabels.forEach((optionLabel) => {
+    const key = productLabelsToKeys[optionLabel];
+
+    if (key) {
+      const value = variant[key];
+
+      if (value && value.length) {
+        if (Array.isArray(value)) {
+          options.push({
+            name: optionLabel,
+            values: value,
+          });
+        } else {
+          options.push({
+            name: optionLabel,
+            values: [value],
+          });
+        }
+      }
+    }
+  });
+
+  return options;
+}
+
+module.exports.getShopifyCreateProductPayload = (
+  fullProduct,
+  variantIndex = 0
+) => {
+  if (!fullProduct || !fullProduct.variants) return null;
+
+  const currentVariant = fullProduct.variants[variantIndex];
+
+  if (!currentVariant) return null;
+
+  const sellingPrice = currentVariant.sellingPrice;
+  const barcode = currentVariant.autoGenerateUnitTypeBarcode
+    ? currentVariant.variantId
+    : currentVariant.unitTypebarcodeValue;
+  const images =
+    currentVariant.variantImages.length > 0
+      ? currentVariant.variantImages
+      : fullProduct.images;
+
+  return {
+    title: currentVariant.variantDescription,
+    body_html: fullProduct.description,
+    vendor: fullProduct.supplierName,
+    product_type: fullProduct.category?.join(", "),
+    status: currentVariant.status,
+
+    // Product options (like Size, Color, etc.)
+    options: getShopifyProductOptionsPayload(currentVariant),
+
+    // Product variants
+    variants: [
+      {
+        option1: currentVariant.size ?? "",
+        option2: currentVariant.color ?? "",
+        price: sellingPrice ? `${sellingPrice}` : "",
+        sku: currentVariant.SKU,
+        inventory_management: "shopify",
+        requires_shipping: true,
+        taxable: true,
+        barcode,
+        weight: currentVariant.weight,
+        weight_unit: currentVariant.weightUnit,
+      },
+    ],
+
+    // Product images
+    images: images.map((src) => ({
+      src,
+      alt: "",
+    })),
   };
 };

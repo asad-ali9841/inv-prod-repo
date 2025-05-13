@@ -281,7 +281,7 @@ const ProductItemSchema = new Schema({
     required: function () {
       return isNotDraft.call(this);
     },
-    default: "cm",
+    default: "kg",
   },
 
   // * STORAGE LOCATIONS
@@ -947,7 +947,7 @@ const PackagingItemSchema = new Schema({
     required: function () {
       return isNotDraft.call(this);
     },
-    default: "cm",
+    default: "kg",
   },
   // * STORAGE LOCATIONS
   warehouseIds: {
@@ -1591,7 +1591,7 @@ const AssemblyItemSchema = new Schema({
     required: function () {
       return isNotDraft.call(this);
     },
-    default: "cm",
+    default: "kg",
   },
   // * STORAGE LOCATIONS
   warehouseIds: {
@@ -2235,7 +2235,7 @@ const KitItemSchema = new Schema({
     required: function () {
       return isNotDraft.call(this);
     },
-    default: "cm",
+    default: "kg",
   },
   // * STORAGE LOCATIONS
   warehouseIds: {
@@ -2873,7 +2873,7 @@ const MROItemSchema = new Schema({
     required: function () {
       return isNotDraft.call(this);
     },
-    default: "cm",
+    default: "kg",
   },
   // * STORAGE LOCATIONS
   warehouseIds: {
@@ -3454,7 +3454,7 @@ const RawMaterialItemSchema = new Schema({
     required: function () {
       return isNotDraft.call(this);
     },
-    default: "cm",
+    default: "kg",
   },
   // * STORAGE LOCATIONS
   warehouseIds: {
