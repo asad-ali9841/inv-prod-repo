@@ -35,6 +35,8 @@ const {
   generateInventoryLogs,
   parseArrayFilter,
   parseDateRangeFilter,
+  getShopifyCreateProductPayload,
+  getTotalQuantityForAllWarehouses,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -70,6 +72,13 @@ const {
   getTotalInventoryValueChartData,
   getTotalInventoryValuePerCategoryChartData,
 } = require("../../utils/chart-data-methods");
+const {
+  searchShopifyProducts,
+  getShopifyProductById,
+  updateShopifyInventoryQuantity,
+  createShopifyProduct,
+} = require("../../shopify-integration/shopify-product-service");
+const { hasShopifyIntegration } = require("../../config");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -151,6 +160,14 @@ class InventoryRepository {
     sortOptions = { createdAt: 1 },
     authKey
   ) {
+    // (
+    //   await ItemSharedAttributesModel.find({ status: ITEM_STATUS.deleted })
+    // ).forEach((product) => {
+    //   product.variantIds.forEach(async (variant_id) => {
+    //     await ItemModel.deleteOne({ _id: variant_id });
+    //   });
+    // });
+    // await ItemSharedAttributesModel.deleteMany({ status: ITEM_STATUS.deleted });
     const skip = (page - 1) * limit;
 
     const {
@@ -1329,6 +1346,26 @@ class InventoryRepository {
 
         // Extract the IDs of the created Variants
         variantIds = createdVariants.map((variant) => variant._id);
+
+        if (hasShopifyIntegration) {
+          const shopifyFullProduct = {
+            ...sharedData.toObject(),
+            variants: createdVariants,
+          };
+
+          for (
+            let variantIndex = 0;
+            variantIndex < createdVariants.length;
+            variantIndex++
+          ) {
+            const shopifyPayload = getShopifyCreateProductPayload(
+              shopifyFullProduct,
+              variantIndex
+            );
+            console.log("payload for shopify:", shopifyPayload);
+            await createShopifyProduct(shopifyPayload);
+          }
+        }
       }
 
       // Update the Product document with the Variant references, if any
@@ -2793,6 +2830,13 @@ class InventoryRepository {
       // Push activity
       variant.activity.push(activity);
 
+      if (hasShopifyIntegration) {
+        await updateShopifyInventoryQuantity(
+          variant.variantDescription,
+          getTotalQuantityForAllWarehouses(variant.totalQuantity)
+        );
+      }
+
       // Save the updated variant
       await variant.save({ session });
 
@@ -2903,123 +2947,187 @@ class InventoryRepository {
     }
   }
 
-  async addInventoryLogs(payload) {
-    try {
-      const { variantId, inventoryLogs } = payload;
-      await ItemModel.findByIdAndUpdate(
-        variantId,
-        {
-          $push: { arrayField: { $each: inventoryLogs } },
-        },
-        { runValidators: true }
-      );
+  async updateItemQuantityDB(payload) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-      return true;
+    try {
+      const {
+        variantId,
+        warehouseId,
+        locationId,
+        quantity,
+        activity,
+        transactionType,
+        poId,
+      } = payload.data;
+
+      //console.log("warehouseId", warehouseId, "locationId", locationId, quantity, poId, transactionType);
+
+      // 1) Fetch the document
+      const doc = await Item.findOne({ variantId }).session(session).exec();
+      if (!doc) throw new Error("Item not found");
+
+      // 2) Update storageLocations (Map of arrays)
+      let warehouseArr = doc.storageLocations.get(warehouseId) || [];
+
+      let locationExists = false;
+
+      const updatedWarehouseArr = warehouseArr.map((locObj) => {
+        if (locObj.locationId === locationId) {
+          locationExists = true;
+          return {
+            ...locObj.toObject?.(), // handle Mongoose subdocs or plain objects
+            itemQuantity: locObj.itemQuantity + quantity,
+          };
+        }
+        return locObj;
+      });
+
+      // If location was not found, push a new one
+      if (!locationExists) {
+        updatedWarehouseArr.push({
+          locationId,
+          itemQuantity: quantity,
+          // You can add other default fields here from your schema
+        });
+      }
+
+      // Re-set the array to ensure Mongoose detects the change
+      doc.storageLocations.set(warehouseId, updatedWarehouseArr);
+      doc.markModified("storageLocations");
+
+      // 3) Update totalQuantity
+      const oldTotalQuantity = doc.totalQuantity[warehouseId] || 0;
+      doc.totalQuantity[warehouseId] =
+        (doc.totalQuantity[warehouseId] || 0) + quantity;
+      doc.markModified("totalQuantity");
+      const totalItemQuantity = doc.totalQuantity[warehouseId];
+
+      // 4) Log the activity
+      doc.activity.push(activity);
+
+      const newInventoryLog = new InventoryLog({
+        variantId: doc._id,
+        warehouseId,
+        poId,
+        initialQuantity: oldTotalQuantity,
+        finalQuantity: totalItemQuantity,
+        transactionType,
+        inventoryValue: roundToTwoDecimals(
+          totalItemQuantity * doc.purchasePrice
+        ),
+      });
+
+      await newInventoryLog.save({ session });
+
+      doc.inventoryLogs.push(newInventoryLog._id);
+
+      if (hasShopifyIntegration) {
+        await updateShopifyInventoryQuantity(
+          doc.variantDescription,
+          totalItemQuantity
+        );
+      }
+
+      // 5) Save changes
+      await doc.save({ session });
+
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
     } catch (error) {
-      console.error("Error adding inventory logs:", error);
+      await session.abortTransaction();
+      session.endSession();
+      console.error("Error in updateItemQuantityDB:", error);
       throw error;
     }
   }
 
-  async updateItemQuantityDB(payload) {
-    const { variantId, warehouseId, locationId, quantity, activity } =
-      payload.data;
-
-    //console.log("warehouseId", warehouseId, "locationId", locationId, quantity);
-
-    // 1) Fetch the document
-    const doc = await Item.findOne({ variantId }).exec();
-    if (!doc) throw new Error("Item not found");
-
-    // 2) Update storageLocations (Map of arrays)
-    let warehouseArr = doc.storageLocations.get(warehouseId) || [];
-
-    let locationExists = false;
-
-    const updatedWarehouseArr = warehouseArr.map((locObj) => {
-      if (locObj.locationId === locationId) {
-        locationExists = true;
-        return {
-          ...locObj.toObject?.(), // handle Mongoose subdocs or plain objects
-          itemQuantity: locObj.itemQuantity + quantity,
-        };
-      }
-      return locObj;
-    });
-
-    // If location was not found, push a new one
-    if (!locationExists) {
-      updatedWarehouseArr.push({
-        locationId,
-        itemQuantity: quantity,
-        // You can add other default fields here from your schema
-      });
-    }
-
-    // Re-set the array to ensure Mongoose detects the change
-    doc.storageLocations.set(warehouseId, updatedWarehouseArr);
-    doc.markModified("storageLocations");
-
-    // 3) Update totalQuantity
-    doc.totalQuantity[warehouseId] =
-      (doc.totalQuantity[warehouseId] || 0) + quantity;
-    doc.markModified("totalQuantity");
-
-    // 4) Log the activity
-    doc.activity.push(activity);
-
-    // 5) Save changes
-    await doc.save();
-
-    // Optional logging
-    // This method is for generating random logs for test. It should not be used like this
-    // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] + quantity, quantity, 0, 1);
-    // console.log("addedLogs", addedLogs);
-  }
-
   async reduceItemQuantityDB(payload) {
-    const { variantId, warehouseId, locationId, quantity, activity } =
-      payload.data;
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    //console.log("warehouseId", warehouseId, "locationId", locationId, quantity);
+    try {
+      const {
+        variantId,
+        warehouseId,
+        locationId,
+        quantity,
+        activity,
+        soId,
+        transactionType,
+      } = payload.data;
 
-    // 1) Query the document
-    const doc = await Item.findOne({ variantId }).exec();
-    if (!doc) throw new Error("Item not found");
+      //console.log("warehouseId", warehouseId, "locationId", locationId, quantity, soId, transactionType);
 
-    // 2) Update storageLocations (Map of arrays)
-    const warehouseArr = doc.storageLocations.get(warehouseId) || [];
+      // 1) Query the document
+      const doc = await Item.findOne({ variantId }).session(session).exec();
+      if (!doc) throw new Error("Item not found");
 
-    // Create a new array with updated itemQuantity
-    const updatedWarehouseArr = warehouseArr.map((locObj) => {
-      if (locObj.locationId === locationId) {
-        return {
-          ...locObj.toObject?.(), // Handles Mongoose subdocument or plain object
-          itemQuantity: locObj.itemQuantity - quantity,
-        };
+      // 2) Update storageLocations (Map of arrays)
+      const warehouseArr = doc.storageLocations.get(warehouseId) || [];
+
+      // Create a new array with updated itemQuantity
+      const updatedWarehouseArr = warehouseArr.map((locObj) => {
+        if (locObj.locationId === locationId) {
+          return {
+            ...locObj.toObject?.(), // Handles Mongoose subdocument or plain object
+            itemQuantity: locObj.itemQuantity - quantity,
+          };
+        }
+        return locObj;
+      });
+      //console.log("updatedWarehouseArr",warehouseId, updatedWarehouseArr);
+      // Re-set the updated array in the Map
+      doc.storageLocations.set(warehouseId, updatedWarehouseArr);
+      doc.markModified("storageLocations");
+
+      // 3) Update totalQuantity
+      const oldTotalQuantity = doc.totalQuantity[warehouseId] || 0;
+      doc.totalQuantity[warehouseId] =
+        (doc.totalQuantity[warehouseId] || 0) - quantity;
+      doc.markModified("totalQuantity");
+      const totalItemQuantity = doc.totalQuantity[warehouseId];
+
+      // 4) Log activity
+      doc.activity.push(activity);
+
+      const newInventoryLog = new InventoryLog({
+        variantId: doc._id,
+        warehouseId,
+        soId,
+        initialQuantity: oldTotalQuantity,
+        finalQuantity: totalItemQuantity,
+        transactionType,
+        inventoryValue: roundToTwoDecimals(
+          totalItemQuantity * doc.purchasePrice
+        ),
+      });
+
+      await newInventoryLog.save({ session });
+
+      doc.inventoryLogs.push(newInventoryLog._id);
+
+      if (hasShopifyIntegration) {
+        await updateShopifyInventoryQuantity(
+          doc.variantDescription,
+          totalItemQuantity
+        );
       }
-      return locObj;
-    });
-    //console.log("updatedWarehouseArr",warehouseId, updatedWarehouseArr);
-    // Re-set the updated array in the Map
-    doc.storageLocations.set(warehouseId, updatedWarehouseArr);
-    doc.markModified("storageLocations");
 
-    // 3) Update totalQuantity
-    doc.totalQuantity[warehouseId] =
-      (doc.totalQuantity[warehouseId] || 0) - quantity;
-    doc.markModified("totalQuantity");
+      // 5) Save the document
+      await doc.save({ session });
 
-    // 4) Log activity
-    doc.activity.push(activity);
-
-    // 5) Save the document
-    await doc.save();
-
-    // Optional: log generated inventory changes
-    // This method is for generating random logs for test. It should not be used like this
-    // let addedLogs = await generateInventoryLogs(Date.now(), Date.now(), warehouseId, doc.variantId, doc.totalQuantity[warehouseId] - quantity, quantity, 0, 1)
-    // console.log("addedLogs", addedLogs)
+      // Commit the transaction
+      await session.commitTransaction();
+      session.endSession();
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error("Error in reduceItemQuantityDB:", error);
+      throw error;
+    }
   }
 
   async getChartData(query, authKey) {
