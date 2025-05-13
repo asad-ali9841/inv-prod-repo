@@ -5,33 +5,43 @@ const {
   shopifyClientSecret,
   baseURL,
   shopifyStoreName,
+  hasShopifyIntegration,
 } = require("../config");
 
-const shopify = shopifyApi({
-  apiKey: shopifyClientId,
-  apiSecretKey: shopifyClientSecret,
-  scopes: [
-    "write_products",
-    "read_products",
-    "read_inventory",
-    "write_inventory",
-  ],
-  hostName: baseURL,
-  apiVersion: LATEST_API_VERSION,
-  isEmbeddedApp: false,
-});
+const shopify = hasShopifyIntegration
+  ? shopifyApi({
+      apiKey: shopifyClientId,
+      apiSecretKey: shopifyClientSecret,
+      scopes: [
+        "write_products",
+        "read_products",
+        "read_inventory",
+        "write_inventory",
+      ],
+      hostName: baseURL,
+      apiVersion: LATEST_API_VERSION,
+      isEmbeddedApp: false,
+    })
+  : null;
 
 const getClientCredentialsSession = async () => {
-  const { session } = await shopify.auth.clientCredentials({
-    shop: shopifyStoreName,
-  });
+  if (shopify) {
+    const { session } = await shopify.auth.clientCredentials({
+      shop: shopifyStoreName,
+    });
 
-  return session;
+    return session;
+  }
 };
 
 const getRestClient = async () => {
-  const session = await getClientCredentialsSession();
-  return new shopify.clients.Rest({ session, apiVersion: LATEST_API_VERSION });
+  if (shopify) {
+    const session = await getClientCredentialsSession();
+    return new shopify.clients.Rest({
+      session,
+      apiVersion: LATEST_API_VERSION,
+    });
+  }
 };
 
 module.exports = {
