@@ -29,9 +29,9 @@ const InventoryLogSchema = new mongoose.Schema({
     required: true,
     validate: {
       validator: Number.isInteger,
-      message: "initialQuantity must be an integer",
+      message: "Initial Quantity must be an integer",
     },
-    min: 0,
+    min: [0, "Initial Quantity cannot be negative"],
   },
   finalQuantity: {
     type: Number,
@@ -40,7 +40,7 @@ const InventoryLogSchema = new mongoose.Schema({
       validator: Number.isInteger,
       message: "finalQuantity must be an integer",
     },
-    min: 0,
+    min: [0, "Final Quantity cannot be negative"],
   },
   inventoryValue: {
     type: Number,
