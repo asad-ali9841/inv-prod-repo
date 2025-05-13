@@ -16,7 +16,7 @@ const {
   addQtyToLoc,
   getLocationsByIds,
 } = require("../api-calls/inventory-api-calls");
-const _ = require("lodash");
+
 const {
   VARAINT_OBJECT_COLUMNS,
   PRODUCT_OBJECT_COLUMNS,

@@ -232,6 +232,8 @@ const VARIANT_ATTRIBUTES = [
   "expiryDate",
   "status",
   "activity",
+  "itemType",
+  "billOfMaterial"
 ];
 
 const productLabelsToKeys = {
