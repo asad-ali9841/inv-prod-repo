@@ -509,6 +509,61 @@ class InventoryRepository {
       // Step 2: Unwind the joined Product array to object
       pipeline.push({ $unwind: "$sharedAttributes" });
 
+      if (!excludeOnDemandKit) {
+        // Add lookup for billOfMaterial
+        pipeline.push(
+          // Unwind the billOfMaterial array
+          {
+            $unwind: {
+              path: "$billOfMaterial",
+              preserveNullAndEmptyArrays: true,
+            },
+          },
+          // Lookup the variant item
+          {
+            $lookup: {
+              from: "items", // Collection name
+              localField: "billOfMaterial.variant_id",
+              foreignField: "_id",
+              pipeline: [
+                { $project: { _id: 1, variantId: 1, totalQuantity: 1 } }, // Only include what you need
+              ],
+              as: "variantDetails",
+            },
+          },
+          // Extract the single matched variant
+          {
+            $addFields: {
+              variant: { $arrayElemAt: ["$variantDetails", 0] },
+            },
+          },
+          // Reformat billOfMaterial item
+          {
+            $addFields: {
+              billOfMaterial: {
+                variant: "$variant",
+              },
+            },
+          },
+          // Group back
+          {
+            $group: {
+              _id: "$_id",
+              doc: { $first: "$$ROOT" },
+              billOfMaterial: { $push: "$billOfMaterial" },
+            },
+          },
+          // Restore original doc with modified billOfMaterial
+          {
+            $replaceRoot: {
+              newRoot: {
+                $mergeObjects: ["$doc", { billOfMaterial: "$billOfMaterial" }],
+              },
+            },
+          }
+        );
+      }
+
       // Step 1: Build the match criteria based on input filters
       const match = {};
 
@@ -591,6 +646,7 @@ class InventoryRepository {
           leadTime: 1,
           leadTimeUnit: 1,
           qtyAtHand: "$totalQuantity",
+          billOfMaterial: excludeOnDemandKit ? 0 : 1,
         },
       });
 
@@ -601,8 +657,39 @@ class InventoryRepository {
       const totalPages = Math.ceil(totalItems / pageSize);
       //console.log(transformedProd)
       // Step 11: Return the paginated and transformed results
+      if (excludeOnDemandKit)
+        return {
+          products,
+          totalItems,
+          totalPages,
+          currentPage: pageNumber,
+        };
+
+      const itemsWithOnDemandKits = products.map((product) => {
+        if (
+          !product.billOfMaterial ||
+          product.billOfMaterial.length === 0 ||
+          Object.keys(product.billOfMaterial[0]).length === 0
+        ) {
+          return product;
+        }
+
+        const bOMItemQuantities = product.billOfMaterial.map((bomItem) => {
+          const bomItemTotalQuantity = getTotalQuantityForAllWarehouses(
+            bomItem.variant.totalQuantity
+          );
+
+          return Math.floor(bomItemTotalQuantity / bomItem.quantity);
+        });
+
+        return {
+          ...product,
+          kitQuantity: Math.min(...bOMItemQuantities),
+        };
+      });
+
       return {
-        products,
+        products: itemsWithOnDemandKits,
         totalItems,
         totalPages,
         currentPage: pageNumber,
@@ -2268,10 +2355,82 @@ class InventoryRepository {
 
         pipeline.push({ $unwind: "$product" });
 
+        const includeBOM = columnsArray.some((col) =>
+          col.startsWith("billOfMaterial")
+        );
+
+        if (includeBOM) {
+          // the field to populate should look like "billOfMaterial.variant.totalQuantity"
+          const billOfMaterialProjection = columnsArray
+            .filter((col) => col.startsWith("billOfMaterial"))
+            .reduce((acc, col) => {
+              const field = col.split(".").at(-1);
+              acc[field] = 1;
+              return acc;
+            }, {});
+
+          // Add lookup for billOfMaterial
+          pipeline.push(
+            // Unwind the billOfMaterial array
+            {
+              $unwind: {
+                path: "$billOfMaterial",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+            // Lookup the variant item
+            {
+              $lookup: {
+                from: "items", // Collection name
+                localField: "billOfMaterial.variant_id",
+                foreignField: "_id",
+                pipeline: [
+                  { $project: billOfMaterialProjection }, // Only include what you need
+                ],
+                as: "variantDetails",
+              },
+            },
+            // Extract the single matched variant
+            {
+              $addFields: {
+                variant: { $arrayElemAt: ["$variantDetails", 0] },
+              },
+            },
+            // Reformat billOfMaterial item
+            {
+              $addFields: {
+                billOfMaterial: {
+                  variant: "$variant",
+                },
+              },
+            },
+            // Group back
+            {
+              $group: {
+                _id: "$_id",
+                doc: { $first: "$$ROOT" },
+                billOfMaterial: { $push: "$billOfMaterial" },
+              },
+            },
+            // Restore original doc with modified billOfMaterial
+            {
+              $replaceRoot: {
+                newRoot: {
+                  $mergeObjects: [
+                    "$doc",
+                    { billOfMaterial: "$billOfMaterial" },
+                  ],
+                },
+              },
+            }
+          );
+        }
+
         // Project stage
         pipeline.push({
           $project: {
             ...columnsArray.reduce((acc, col) => {
+              if (col.startsWith("billOfMaterial")) return acc;
               if (VARIANT_ATTRIBUTES.includes(col)) {
                 // Direct access for variant attributes
                 acc[col] = 1;
@@ -2283,6 +2442,7 @@ class InventoryRepository {
             }, {}),
             _id: 1, // Always include _id,
             productId: "$product._id",
+            billOfMaterial: includeBOM ? 1 : 0,
             images: {
               $cond: {
                 if: {
