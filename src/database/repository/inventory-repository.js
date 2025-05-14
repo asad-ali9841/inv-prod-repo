@@ -2356,13 +2356,13 @@ class InventoryRepository {
         pipeline.push({ $unwind: "$product" });
 
         const includeBOM = columnsArray.some((col) =>
-          col.startsWith("billOfMaterial")
+          col.startsWith("billOfMaterial.")
         );
 
         if (includeBOM) {
           // the field to populate should look like "billOfMaterial.variant.totalQuantity"
           const billOfMaterialProjection = columnsArray
-            .filter((col) => col.startsWith("billOfMaterial"))
+            .filter((col) => col.startsWith("billOfMaterial."))
             .reduce((acc, col) => {
               const field = col.split(".").at(-1);
               acc[field] = 1;
@@ -2430,7 +2430,7 @@ class InventoryRepository {
         pipeline.push({
           $project: {
             ...columnsArray.reduce((acc, col) => {
-              if (col.startsWith("billOfMaterial")) return acc;
+              if (col.startsWith("billOfMaterial.")) return acc;
               if (VARIANT_ATTRIBUTES.includes(col)) {
                 // Direct access for variant attributes
                 acc[col] = 1;

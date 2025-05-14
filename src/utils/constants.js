@@ -224,6 +224,8 @@ const VARIANT_ATTRIBUTES = [
   "capacityHeight",
   "warehouseIds",
   "storageLocations",
+  "itemType",
+  "billOfMaterial",
   "expiryDate",
   "status",
   "activity",
