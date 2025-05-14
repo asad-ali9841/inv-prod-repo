@@ -2202,6 +2202,81 @@ class InventoryService {
       );
     }
   }
+
+  // Integration settings service methods
+  async getActiveIntegrations() {
+    try {
+      const result = await this.respository.getActiveIntegrations();
+
+      return apiPayloadFormat(
+        1,
+        "success",
+        "Active integrations fetched",
+        result
+      );
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error fetching active integrations: ${error.message}`,
+        {}
+      );
+    }
+  }
+
+  async getIntegrationByKey(key) {
+    try {
+      if (!key) throw new Error("Missing integration key");
+
+      const result = await this.respository.getIntegrationByKey(key);
+
+      return apiPayloadFormat(1, "success", "Integration fetched", result);
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error fetching integration: ${error.message}`,
+        {}
+      );
+    }
+  }
+
+  async updateIntegration(key, data) {
+    try {
+      if (!key || !data) throw new Error("Invalid input parameters");
+
+      const result = await this.respository.updateIntegration(key, data);
+
+      return apiPayloadFormat(1, "success", "Integration updated", result);
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error updating integration: ${error.message}`,
+        {}
+      );
+    }
+  }
+
+  async validateShopifyStore(storeDomain) {
+    try {
+      if (!storeDomain) throw new Error("Missing store domain");
+
+      const isValid = await this.respository.validateShopifyStore(storeDomain);
+
+      return apiPayloadFormat(1, "success", "Store validation result", {
+        isValid,
+        storeDomain,
+      });
+    } catch (error) {
+      return apiPayloadFormat(
+        0,
+        "error",
+        `Error validating shopify store domain: ${error.message}`,
+        {}
+      );
+    }
+  }
 }
 
 // create loactions to write to Db

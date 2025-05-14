@@ -22,6 +22,7 @@ const {
   NonInventoryCommon,
   Phantom,
   PhantomCommon,
+  IntegrationSettingsModel,
 } = require("../models/index"); // Adjust the path to where your User model is located
 const mongoose = require("mongoose");
 const {
@@ -58,6 +59,7 @@ const {
   SUPPLIER_ARRAY_FILTER_COLUMNS,
   VARIANT_ATTRIBUTES,
   KIT_ASSEMBLY_TYPE,
+  INTEGRATION_DOCUMENT_ID,
 } = require("../../utils/constants");
 
 const {
@@ -3332,6 +3334,84 @@ class InventoryRepository {
       return []; // fallback
     } catch (error) {
       console.error("Error generating chart data:", error);
+      throw error;
+    }
+  }
+
+  // Integration settings repository methods
+  async getActiveIntegrations() {
+    try {
+      const integrationSettingsDoc = await IntegrationSettingsModel.findById(
+        INTEGRATION_DOCUMENT_ID
+      );
+
+      if (!integrationSettingsDoc)
+        throw new Error("Database not seeded. Please contact support");
+
+      const integrations = integrationSettingsDoc.integrations;
+      const activeIntegrations = Object.entries(integrations)
+        .filter(([, config]) => config?.isActive)
+        .map(([key]) => key);
+
+      return activeIntegrations;
+    } catch (error) {
+      console.error("Error fetching active integrations:", error);
+      throw error;
+    }
+  }
+
+  async getIntegrationByKey(key) {
+    try {
+      const integrationSettingsDoc = await IntegrationSettingsModel.findById(
+        INTEGRATION_DOCUMENT_ID
+      );
+
+      if (!integrationSettingsDoc)
+        throw new Error("Database not seeded. Please contact support");
+
+      return integrationSettingsDoc.integrations[key];
+    } catch (error) {
+      console.error("Error fetching integration:", error);
+      throw error;
+    }
+  }
+
+  async updateIntegration(key, data) {
+    try {
+      const integrationSettingsDoc =
+        await IntegrationSettingsModel.findOneAndUpdate(
+          {
+            _id: INTEGRATION_DOCUMENT_ID,
+          },
+          {
+            $set: {
+              [`integrations.${key}`]: {
+                ...data,
+                updatedAt: Date.now(),
+              },
+            },
+          },
+          { new: true }
+        );
+
+      if (!integrationSettingsDoc)
+        throw new Error("Database not seeded. Please contact support");
+
+      return {
+        key,
+        updatedAt: Date.now(),
+      };
+    } catch (error) {
+      console.error("Error fetching integration:", error);
+      throw error;
+    }
+  }
+
+  async validateShopifyStore(storeDomain) {
+    try {
+      return storeDomain;
+    } catch (error) {
+      console.error("Error validating shopify store domain:", error);
       throw error;
     }
   }

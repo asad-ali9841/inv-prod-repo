@@ -53,6 +53,14 @@ const VARIANT_ARRAY_FILTER_COLUMNS = [
   "finish",
 ];
 
+const INTEGRATION_DOCUMENT_ID = "INTEGRATION_DOCUMENT_ID";
+
+const fixedShopifyIntegrationFieldsToSync = [
+  "inventory_levels",
+  "pricing",
+  "order_status",
+];
+
 const VARIANT_DATE_RANGE_FILTER_COLUMNS = ["createdAt", "updatedAt"];
 
 const PRODUCT_AND_VARIANT_ARRAY_COLUMNS = [
@@ -485,4 +493,6 @@ module.exports = {
   SUPPLIER_DATE_RANGE_FILTER_COLUMNS,
   SUPPLIER_TEXT_FILTER_COLUMNS,
   shopifyOptionsLabels,
+  INTEGRATION_DOCUMENT_ID,
+  fixedShopifyIntegrationFieldsToSync,
 };
