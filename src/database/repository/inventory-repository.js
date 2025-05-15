@@ -2318,7 +2318,9 @@ class InventoryRepository {
     columnsArray
   ) {
     const toObjectIdArray = (arr) =>
-      Array.isArray(arr) ? arr.map(id => new mongoose.Types.ObjectId(id)) : [];
+      Array.isArray(arr)
+        ? arr.map((id) => new mongoose.Types.ObjectId(id))
+        : [];
     // Build query object conditionally
     const query =
       objectIds?.length > 0
@@ -2338,7 +2340,7 @@ class InventoryRepository {
     if (statusArray && statusArray.length > 0) {
       query.status = { $in: statusArray };
     }
-    
+
     try {
       if (columnsArray && columnsArray.length > 0) {
         const pipeline = [];
@@ -2359,10 +2361,9 @@ class InventoryRepository {
         pipeline.push({
           $unwind: {
             path: "$product",
-            preserveNullAndEmptyArrays: true
-          }
+            preserveNullAndEmptyArrays: true,
+          },
         });
-        
 
         const includeBOM = columnsArray.some((col) =>
           col.startsWith("billOfMaterial.")
@@ -2451,7 +2452,7 @@ class InventoryRepository {
             }, {}),
             _id: 1, // Always include _id,
             productId: "$product._id",
-            billOfMaterial: includeBOM ? 1 : 0,
+            billOfMaterial: includeBOM ? 1 : undefined,
             images: {
               $cond: {
                 if: {
