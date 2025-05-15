@@ -1,48 +1,24 @@
-const { UserModel } = require('../models/index'); // Path to your User model
-let rootUserData = {
-    // id is email-usertype
-    _id: 'root-user@default.com-admin',
-    givenName: "root-user",
-    lastName: "wms",
-    email: "root-user@default.com",
-    password: "$2a$10$kY7hCXWy2Je7SHsgGLNsY.8BdaHoBuawpdZws.Sb3o7QN4s58EyRO",
-    autoGeneratePassword: false,
-    type: "admin",
-    salt: "$2a$10$kY7hCXWy2Je7SHsgGLNsY.",
-    role: "admin",
-    status: "default",
-    createdAt: 1714648726971,
-    updatedAt: 1714648726971,
-    lastLoginAt: null,
-    activity: [
-      {
-        key: "",
-        email: "",
-        role: "",
-        date: 1714648726971,
-        activity: "User created by default",
-        changes: [],
-      },
-    ],
-};
-
+const { INTEGRATION_DOCUMENT_ID } = require("../../utils/constants");
+const { IntegrationSettingsModel } = require("../models");
 
 async function seedDatabase() {
-    try {
-        // Check for existing root user
-        const rootUserExists = await UserModel.findOne({ email: 'root-user@default.com' });
-        if (!rootUserExists) {
-            const rootUser = new UserModel(rootUserData);
-            await rootUser.save();
-            console.log('Root user created');
-        } else {
-            console.log('Root user already exists');
-        }
+  try {
+    const exists = await IntegrationSettingsModel.exists({
+      _id: INTEGRATION_DOCUMENT_ID,
+    });
 
-        // Add other default entities similarly
-    } catch (error) {
-        console.error('Error seeding database:', error);
+    if (!exists) {
+      await IntegrationSettingsModel.create({
+        _id: INTEGRATION_DOCUMENT_ID,
+      }); // Populate from the default values defined in the schema
+
+      console.log("✅ Seeded global IntegrationSettings document");
+    } else {
+      console.log("⚠️ IntegrationSettings document already exists");
     }
+  } catch (error) {
+    console.error("Error seeding database:", error);
+  }
 }
 
 // {
@@ -245,5 +221,4 @@ async function seedDatabase() {
 //     }
 // }
 
-
-module.exports = {seedDatabase};
+module.exports = { seedDatabase };

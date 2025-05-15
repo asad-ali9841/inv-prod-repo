@@ -1,8 +1,9 @@
+const { shopifyStoreName } = require("../config");
 const { getRestClient } = require("./shopify-api-config");
 
 module.exports.updateShopifyProduct = async (productId, productData) => {
   try {
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     // Update the product on Shopify
     const response = await client.put({
@@ -20,7 +21,7 @@ module.exports.updateShopifyProduct = async (productId, productData) => {
 // Get all products with pagination
 module.exports.getShopifyProducts = async (options = {}) => {
   try {
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     // Default query parameters
     const queryParams = {
@@ -56,7 +57,7 @@ module.exports.getShopifyProducts = async (options = {}) => {
 // Get a single product by ID
 module.exports.getShopifyProductById = async (productId) => {
   try {
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     const response = await client.get({
       path: `products/${productId}`,
@@ -78,7 +79,7 @@ module.exports.getShopifyProductById = async (productId) => {
 // Search for products
 module.exports.searchShopifyProducts = async (query) => {
   try {
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     const response = await client.get({
       path: "products",
@@ -102,7 +103,7 @@ module.exports.searchShopifyProducts = async (query) => {
 
 module.exports.getShopifyProductByTitle = async (title) => {
   try {
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     const response = await client.get({
       path: "products",
@@ -127,7 +128,7 @@ module.exports.getShopifyProductByTitle = async (title) => {
 module.exports.updateShopifyInventoryQuantity = async (title, newQuantity) => {
   try {
     // First, get the product to find its inventory item ID
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     const productTitleResponse = await client.get({
       path: "products",
@@ -210,7 +211,7 @@ module.exports.updateShopifyInventoryQuantity = async (title, newQuantity) => {
 
 module.exports.createShopifyProduct = async (productData) => {
   try {
-    const client = await getRestClient();
+    const client = await getRestClient(shopifyStoreName);
 
     // Create the product on Shopify
     const response = await client.post({
@@ -223,5 +224,17 @@ module.exports.createShopifyProduct = async (productData) => {
   } catch (error) {
     console.error("Error creating product on Shopify:", error);
     throw error;
+  }
+};
+
+module.exports.isAppInstalledOnStore = async (storeDomain) => {
+  try {
+    const client = await getRestClient(storeDomain);
+
+    if (client) return true;
+
+    return false;
+  } catch (error) {
+    return false;
   }
 };

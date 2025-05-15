@@ -17,7 +17,7 @@ const startServer = async () => {
   databaseConnection()
     .then(() => {
       // Now that the connection is established, call createCollections
-      if (SYSTEM_Setup === "true") return seedDatabase();
+      if ([true, "true"].includes(SYSTEM_Setup)) return seedDatabase();
     })
     .then(() => {
       expressApp(app);

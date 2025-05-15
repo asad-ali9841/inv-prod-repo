@@ -26,6 +26,7 @@ module.exports = {
   ItemModel: require("./Item"),
   InventoryLog: require("./InventoryLog"),
   ItemSharedAttributesModel: require("./ItemSharedAttributes"),
+  IntegrationSettingsModel: require("./Integrations"),
   Products,
   ProductsCommon,
   PackagingSupplies,

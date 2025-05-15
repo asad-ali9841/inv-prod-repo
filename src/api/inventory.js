@@ -735,4 +735,28 @@ module.exports = (app) => {
     });
     return res.json(product);
   });
+
+  // Integration settings endpoints
+  app.get("/integration/getactive", userAuth, async (req, res) => {
+    const result = await service.getActiveIntegrations();
+    return res.json(result);
+  });
+
+  app.get("/integration/get", userAuth, async (req, res) => {
+    const result = await service.getIntegrationByKey(req.query.integrationKey);
+    return res.json(result);
+  });
+
+  app.put("/integration/update", userAuth, async (req, res) => {
+    const result = await service.updateIntegration(
+      req.query.integrationKey,
+      req.body
+    );
+    return res.json(result);
+  });
+
+  app.post("/integration/shopify/validatestore", userAuth, async (req, res) => {
+    const result = await service.validateShopifyStore(req.query.storeDomain);
+    return res.json(result);
+  });
 };
