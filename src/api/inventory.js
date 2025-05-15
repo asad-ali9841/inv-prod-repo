@@ -33,6 +33,12 @@ const {
   VARAINT_OBJECT_COLUMNS,
 } = require("../utils/constants");
 const { getActiveWarehouses } = require("../api-calls/inventory-api-calls");
+const {
+  retrieveSession,
+  storeSession,
+  deleteSession,
+} = require("../shopify-integration/shopify-session-service");
+const { shopify } = require("../shopify-integration/shopify-api-config");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -44,6 +50,174 @@ const s3 = new S3Client({
 
 module.exports = (app) => {
   const service = new InventoryService();
+
+  // Shopify routes
+  // 1. Initial Auth Route - Start OAuth process
+  app.get("/shopify/auth", async (req, res) => {
+    const { shop } = req.query;
+
+    if (!shop) {
+      return res.status(400).send("Missing shop parameter");
+    }
+
+    try {
+      // Check if we already have an active session
+      const existingSession = await retrieveSession(shop);
+
+      if (existingSession) {
+        // Already authenticated,
+        return res.json({
+          success: true,
+          message: "Authenticated successfully",
+          shop: existingSession.shop,
+          scopes: existingSession.scope,
+        });
+      }
+
+      // Generate a nonce for CSRF protection
+      const state = shopify.auth.nonce();
+
+      // Store state in session for verification
+      req.session.state = state;
+      req.session.shop = shop;
+
+      // Build the authorization URL
+      const redirectUrl = await shopify.auth.beginAuth({
+        shop,
+        redirectPath: "/shopify/auth/callback",
+        isOnline: true,
+        state,
+      });
+
+      // Redirect to Shopify's authorization page
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error("Auth error:", error);
+      res.status(500).send(`Authentication error: ${error.message}`);
+    }
+  });
+
+  // 2. OAuth Callback Route - Handle the callback from Shopify
+  app.get("/shopify/auth/callback", async (req, res) => {
+    const { shop, state } = req.query;
+
+    try {
+      // Verify state matches to prevent CSRF attacks
+      if (state !== req.session.state) {
+        return res.status(403).send("Request origin cannot be verified");
+      }
+
+      // Complete the OAuth process
+      const session = await shopify.auth.validateAuthCallback({
+        query: req.query,
+        state: req.session.state,
+      });
+
+      // Store the session using your service
+      await storeSession(session);
+
+      // Clear session variables
+      req.session.state = undefined;
+      req.session.shop = undefined;
+
+      // Redirect to app home
+      res.redirect("/shopify/app");
+    } catch (error) {
+      console.error("OAuth callback error:", error);
+      res.status(500).send(`Error completing OAuth: ${error.message}`);
+    }
+  });
+
+  // 3. Auth Verification Route - Check if a shop is authenticated
+  app.get("/shopify/auth/verify", async (req, res) => {
+    const { shop } = req.query;
+
+    if (!shop) {
+      return res.status(400).json({
+        authenticated: false,
+        message: "Shop parameter is required",
+      });
+    }
+
+    try {
+      const session = await retrieveSession(shop);
+
+      return res.json({
+        authenticated: !!session,
+        scopes: session?.scope || null,
+        expiresAt: session?.expires || null,
+      });
+    } catch (error) {
+      console.error("Error checking authentication:", error);
+      return res.status(500).json({
+        authenticated: false,
+        message: "Error checking authentication",
+      });
+    }
+  });
+
+  // 4. Token Refresh Route (optional) - Refresh access tokens
+  app.post("/shopify/auth/refresh", async (req, res) => {
+    const { shop } = req.body;
+
+    if (!shop) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Shop parameter is required" });
+    }
+
+    try {
+      const session = await retrieveSession(shop);
+
+      if (!session) {
+        return res
+          .status(404)
+          .json({ success: false, message: "No session found for this shop" });
+      }
+
+      // For online tokens only - offline tokens don't expire
+      if (session.isOnline && session.expires) {
+        // Check if token is expired or about to expire (within 1 hour)
+        const expiryDate = new Date(session.expires);
+        const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+
+        if (expiryDate <= oneHourFromNow) {
+          // Token needs refreshing - implement token refresh logic here
+          // Note: This depends on your Shopify API library's capabilities
+
+          // Example (pseudocode):
+          // const newSession = await shopify.auth.refreshToken(session);
+          // await storeSession(newSession);
+
+          return res.json({ success: true, message: "Token refreshed" });
+        }
+      }
+
+      return res.json({ success: true, message: "Token is valid" });
+    } catch (error) {
+      console.error("Error refreshing token:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error refreshing token" });
+    }
+  });
+
+  // 5. Logout Route - End the session
+  app.get("/shopify/auth/logout", async (req, res) => {
+    const { shop } = req.query;
+
+    if (!shop) {
+      return res.status(400).send("Missing shop parameter");
+    }
+
+    try {
+      await deleteSession(shop);
+      res.redirect("/shopify/auth?shop=" + encodeURIComponent(shop));
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).send("Error during logout");
+    }
+  });
 
   // *# HELPER APIs
   //Get product attributes

@@ -18,6 +18,7 @@ module.exports = {
   redis_url: process.env.redis_url,
   SYSTEM_Setup: process.env.SYSTEM_Setup,
   baseURL: process.env.baseURL,
+  hostName: process.env.hostName,
   Routes: {
     userService: process.env.user_service,
     warehouseService: process.env.warehouse_service,
