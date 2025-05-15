@@ -1,9 +1,12 @@
-const { shopifyStoreName } = require("../config");
 const { getRestClient } = require("./shopify-api-config");
 
-module.exports.updateShopifyProduct = async (productId, productData) => {
+module.exports.updateShopifyProduct = async (
+  productId,
+  productData,
+  shopifyStoreDomain
+) => {
   try {
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     // Update the product on Shopify
     const response = await client.put({
@@ -19,9 +22,12 @@ module.exports.updateShopifyProduct = async (productId, productData) => {
 };
 
 // Get all products with pagination
-module.exports.getShopifyProducts = async (options = {}) => {
+module.exports.getShopifyProducts = async (
+  options = {},
+  shopifyStoreDomain
+) => {
   try {
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     // Default query parameters
     const queryParams = {
@@ -55,9 +61,12 @@ module.exports.getShopifyProducts = async (options = {}) => {
 };
 
 // Get a single product by ID
-module.exports.getShopifyProductById = async (productId) => {
+module.exports.getShopifyProductById = async (
+  productId,
+  shopifyStoreDomain
+) => {
   try {
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     const response = await client.get({
       path: `products/${productId}`,
@@ -77,9 +86,9 @@ module.exports.getShopifyProductById = async (productId) => {
 };
 
 // Search for products
-module.exports.searchShopifyProducts = async (query) => {
+module.exports.searchShopifyProducts = async (query, shopifyStoreDomain) => {
   try {
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     const response = await client.get({
       path: "products",
@@ -101,9 +110,9 @@ module.exports.searchShopifyProducts = async (query) => {
   }
 };
 
-module.exports.getShopifyProductByTitle = async (title) => {
+module.exports.getShopifyProductByTitle = async (title, shopifyStoreDomain) => {
   try {
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     const response = await client.get({
       path: "products",
@@ -116,7 +125,7 @@ module.exports.getShopifyProductByTitle = async (title) => {
     const product =
       response.body.products?.length === 1 ? response.body.products[0] : null;
 
-    console.log("response for searchShopifyProducts:", response, product);
+    console.log("response for getShopifyProductByTitle:", response, product);
 
     return product;
   } catch (error) {
@@ -125,10 +134,14 @@ module.exports.getShopifyProductByTitle = async (title) => {
   }
 };
 
-module.exports.updateShopifyInventoryQuantity = async (title, newQuantity) => {
+module.exports.updateShopifyInventoryQuantity = async (
+  title,
+  newQuantity,
+  shopifyStoreDomain
+) => {
   try {
     // First, get the product to find its inventory item ID
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     const productTitleResponse = await client.get({
       path: "products",
@@ -209,9 +222,12 @@ module.exports.updateShopifyInventoryQuantity = async (title, newQuantity) => {
   }
 };
 
-module.exports.createShopifyProduct = async (productData) => {
+module.exports.createShopifyProduct = async (
+  productData,
+  shopifyStoreDomain
+) => {
   try {
-    const client = await getRestClient(shopifyStoreName);
+    const client = await getRestClient(shopifyStoreDomain);
 
     // Create the product on Shopify
     const response = await client.post({
