@@ -3070,8 +3070,7 @@ class InventoryRepository {
       // Push activity
       variant.activity.push(activity);
 
-      const shopifyIntegration = await this.getIntegrationByKey("shopify");
-      await updateShopifyItemQuantity(variant, shopifyIntegration);
+      await updateShopifyItemQuantity(variant);
 
       // Save the updated variant
       await variant.save({ session });
@@ -3259,8 +3258,7 @@ class InventoryRepository {
 
       doc.inventoryLogs.push(newInventoryLog._id);
 
-      const shopifyIntegration = await this.getIntegrationByKey("shopify");
-      await updateShopifyItemQuantity(doc, shopifyIntegration);
+      await updateShopifyItemQuantity(doc);
 
       // 5) Save changes
       await doc.save({ session });
@@ -3341,8 +3339,7 @@ class InventoryRepository {
 
       doc.inventoryLogs.push(newInventoryLog._id);
 
-      const shopifyIntegration = await this.getIntegrationByKey("shopify");
-      await updateShopifyItemQuantity(doc, shopifyIntegration);
+      await updateShopifyItemQuantity(doc);
 
       // 5) Save the document
       await doc.save({ session });

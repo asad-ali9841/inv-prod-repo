@@ -26,11 +26,13 @@ const {
   INVENTORY_TRANSACTION_TYPES,
   shopifyOptionsLabels,
   productLabelsToKeys,
+  INTEGRATION_DOCUMENT_ID,
 } = require("./constants");
 const InventoryLog = require("../database/models/InventoryLog");
 const {
   updateShopifyInventoryQuantity,
 } = require("../shopify-integration/shopify-product-service");
+const IntegrationSettingsModel = require("../database/models/Integrations");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -796,14 +798,21 @@ module.exports.getShopifyProductPayload = (
   return productPayload;
 };
 
-module.exports.updateShopifyItemQuantity = async (
-  variant,
-  shopifyIntegration
-) => {
-  if (!variant || !shopifyIntegration)
-    throw new Error("Missing parameters for updating shopify inventory");
+module.exports.updateShopifyItemQuantity = async (variant) => {
+  if (!variant)
+    throw new Error("Missing variant for updating shopify inventory");
+
+  const integrationSettingsDoc = await IntegrationSettingsModel.findById(
+    INTEGRATION_DOCUMENT_ID
+  );
+
+  if (!integrationSettingsDoc)
+    throw new Error("Database not seeded. Please contact support");
+
+  const shopifyIntegration = integrationSettingsDoc.integrations.shopify;
 
   if (
+    !shopifyIntegration ||
     !shopifyIntegration.itemTypesToSync.includes(variant.itemType) ||
     !shopifyIntegration.isActive ||
     !shopifyIntegration.fieldsToSync.includes("inventory_levels")
