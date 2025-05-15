@@ -2317,6 +2317,10 @@ class InventoryRepository {
     statusArray,
     columnsArray
   ) {
+    const toObjectIdArray = (arr) =>
+      Array.isArray(arr)
+        ? arr.map((id) => new mongoose.Types.ObjectId(id))
+        : [];
     // Build query object conditionally
     const query =
       objectIds?.length > 0
@@ -2330,9 +2334,8 @@ class InventoryRepository {
         : skus?.length > 0
         ? { SKU: { $in: skus } }
         : {
-            _id: { $in: variant_ids },
+            _id: { $in: toObjectIdArray(variant_ids) },
           };
-
     // Only add status filter if statusArray has values
     if (statusArray && statusArray.length > 0) {
       query.status = { $in: statusArray };
@@ -2355,7 +2358,12 @@ class InventoryRepository {
           },
         });
 
-        pipeline.push({ $unwind: "$product" });
+        pipeline.push({
+          $unwind: {
+            path: "$product",
+            preserveNullAndEmptyArrays: true,
+          },
+        });
 
         const includeBOM = columnsArray.some((col) =>
           col.startsWith("billOfMaterial.")
@@ -2444,7 +2452,7 @@ class InventoryRepository {
             }, {}),
             _id: 1, // Always include _id,
             productId: "$product._id",
-            billOfMaterial: includeBOM ? 1 : 0,
+            billOfMaterial: includeBOM ? 1 : undefined,
             images: {
               $cond: {
                 if: {
@@ -2456,8 +2464,7 @@ class InventoryRepository {
             },
           },
         });
-
-        const variants = await ItemModel.aggregate(pipeline);
+        const variants = await ItemModel.aggregate(pipeline).exec();
         return variants;
       } else {
         const variants = await ItemModel.find(query, {
@@ -2491,6 +2498,7 @@ class InventoryRepository {
             "inspectionRequirements serialTracking lotTracking supplierName supplierId images"
           ) // Populate the product field with only the inspectionRequirements
           .lean(); // Use .lean() for plain JavaScript objects
+        console.log(variants);
         if (variants.length > 0) {
           // Transform data to the required structure
           const matchedVariants = variants
@@ -2531,7 +2539,7 @@ class InventoryRepository {
               baseUOMBarcodeValue: variant.unitTypebarcodeValue,
               itemType: variant.itemType,
             }));
-
+          console.log(matchedVariants);
           return matchedVariants;
         } else {
           console.log("No variants found!");
@@ -3169,28 +3177,28 @@ class InventoryRepository {
       // 4) Log the activity
       doc.activity.push(activity);
 
-      const newInventoryLog = new InventoryLog({
-        variantId: doc._id,
-        warehouseId,
-        poId,
-        initialQuantity: oldTotalQuantity,
-        finalQuantity: totalItemQuantity,
-        transactionType,
-        inventoryValue: roundToTwoDecimals(
-          totalItemQuantity * doc.purchasePrice
-        ),
-      });
+      // const newInventoryLog = new InventoryLog({
+      //   variantId: doc._id,
+      //   warehouseId,
+      //   poId,
+      //   initialQuantity: oldTotalQuantity,
+      //   finalQuantity: totalItemQuantity,
+      //   transactionType,
+      //   inventoryValue: roundToTwoDecimals(
+      //     totalItemQuantity * doc.purchasePrice
+      //   ),
+      // });
 
-      await newInventoryLog.save({ session });
+      // await newInventoryLog.save({ session });
 
-      doc.inventoryLogs.push(newInventoryLog._id);
+      // doc.inventoryLogs.push(newInventoryLog._id);
 
-      if (hasShopifyIntegration) {
-        await updateShopifyInventoryQuantity(
-          doc.variantDescription,
-          totalItemQuantity
-        );
-      }
+      // if (hasShopifyIntegration) {
+      //   await updateShopifyInventoryQuantity(
+      //     doc.variantDescription,
+      //     totalItemQuantity
+      //   );
+      // }
 
       // 5) Save changes
       await doc.save({ session });
@@ -3255,28 +3263,28 @@ class InventoryRepository {
       // 4) Log activity
       doc.activity.push(activity);
 
-      const newInventoryLog = new InventoryLog({
-        variantId: doc._id,
-        warehouseId,
-        soId,
-        initialQuantity: oldTotalQuantity,
-        finalQuantity: totalItemQuantity,
-        transactionType,
-        inventoryValue: roundToTwoDecimals(
-          totalItemQuantity * doc.purchasePrice
-        ),
-      });
+      // const newInventoryLog = new InventoryLog({
+      //   variantId: doc._id,
+      //   warehouseId,
+      //   soId,
+      //   initialQuantity: oldTotalQuantity,
+      //   finalQuantity: totalItemQuantity,
+      //   transactionType,
+      //   inventoryValue: roundToTwoDecimals(
+      //     totalItemQuantity * doc.purchasePrice
+      //   ),
+      // });
 
-      await newInventoryLog.save({ session });
+      // await newInventoryLog.save({ session });
 
-      doc.inventoryLogs.push(newInventoryLog._id);
+      // doc.inventoryLogs.push(newInventoryLog._id);
 
-      if (hasShopifyIntegration) {
-        await updateShopifyInventoryQuantity(
-          doc.variantDescription,
-          totalItemQuantity
-        );
-      }
+      // if (hasShopifyIntegration) {
+      //   await updateShopifyInventoryQuantity(
+      //     doc.variantDescription,
+      //     totalItemQuantity
+      //   );
+      // }
 
       // 5) Save the document
       await doc.save({ session });
