@@ -27,6 +27,7 @@ module.exports = {
   InventoryLog: require("./InventoryLog"),
   ItemSharedAttributesModel: require("./ItemSharedAttributes"),
   IntegrationSettingsModel: require("./Integrations"),
+  ShopifySession: require("./ShopifySession"),
   Products,
   ProductsCommon,
   PackagingSupplies,

@@ -1,6 +1,12 @@
 require("@shopify/shopify-api/adapters/node");
 const { shopifyApi, LATEST_API_VERSION } = require("@shopify/shopify-api");
-const { shopifyClientId, shopifyClientSecret, baseURL } = require("../config");
+const {
+  shopifyClientId,
+  shopifyClientSecret,
+  hostName,
+  baseURL,
+} = require("../config");
+const { retrieveSession } = require("./shopify-session-service");
 
 const shopify = shopifyApi({
   apiKey: shopifyClientId,
@@ -11,23 +17,26 @@ const shopify = shopifyApi({
     "read_inventory",
     "write_inventory",
   ],
-  hostName: baseURL,
+  hostName, // This should be just the domain, e.g., "api.3dlwms.com"
   apiVersion: LATEST_API_VERSION,
   isEmbeddedApp: false,
+  redirectUrl: `${baseURL}/inventory/shopify/auth/callback`, // baseURL should include protocol
 });
 
-const getClientCredentialsSession = async (shopifyStoreDomain) => {
-  const { session } = await shopify.auth.clientCredentials({
-    shop: shopifyStoreDomain,
-  });
-
-  return session;
-};
-
+// New function to get a REST client using OAuth session
 const getRestClient = async (shopifyStoreDomain) => {
-  const session = await getClientCredentialsSession(shopifyStoreDomain);
+  // Get the stored OAuth session
+  const session = await retrieveSession(shopifyStoreDomain);
+
+  if (!session) {
+    throw new Error(`No OAuth session found for shop: ${shopifyStoreDomain}`);
+  }
+
   return new shopify.clients.Rest({
-    session,
+    session: {
+      shop: session.shop,
+      accessToken: session.accessToken,
+    },
     apiVersion: LATEST_API_VERSION,
   });
 };

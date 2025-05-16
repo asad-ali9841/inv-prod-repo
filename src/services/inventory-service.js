@@ -1578,9 +1578,9 @@ class InventoryService {
     return apiPayloadFormat(
       1,
       "success",
-      payload.status === "active"
-        ? "Product published sucessfully"
-        : "Product drafted sucessfully",
+      payload.status === ITEM_STATUS.active
+        ? "Product published successfully"
+        : "Product drafted successfully",
       {
         _id: savedProduct._id,
         productId: savedProduct.productId,
