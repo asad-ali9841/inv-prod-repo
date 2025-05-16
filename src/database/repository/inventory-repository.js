@@ -80,6 +80,9 @@ const {
   getShopifyProductByTitle,
   updateShopifyProduct,
 } = require("../../shopify-integration/shopify-product-service");
+const {
+  retrieveSession,
+} = require("../../shopify-integration/shopify-session-service");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -3472,7 +3475,11 @@ class InventoryRepository {
 
   async validateShopifyStore(storeDomain) {
     try {
-      return storeDomain;
+      const session = await retrieveSession(storeDomain);
+
+      if (!session) return false;
+
+      return true;
     } catch (error) {
       console.error("Error validating shopify store domain:", error);
       throw error;

@@ -242,15 +242,3 @@ module.exports.createShopifyProduct = async (
     throw error;
   }
 };
-
-module.exports.isAppInstalledOnStore = async (storeDomain) => {
-  try {
-    const client = await getRestClient(storeDomain);
-
-    if (client) return true;
-
-    return false;
-  } catch (error) {
-    return false;
-  }
-};
