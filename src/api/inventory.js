@@ -921,6 +921,11 @@ module.exports = (app) => {
     return res.json(result);
   });
 
+  app.get("/integration/get/open", async (req, res) => {
+    const result = await service.getIntegrationByKey(req.query.integrationKey);
+    return res.json(result);
+  });
+
   app.put("/integration/update", userAuth, async (req, res) => {
     const result = await service.updateIntegration(
       req.query.integrationKey,
