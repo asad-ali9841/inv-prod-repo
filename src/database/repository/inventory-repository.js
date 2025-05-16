@@ -573,7 +573,7 @@ class InventoryRepository {
         match["itemType"] = { $in: itemTypes };
       }
 
-      if (["true", true].includes(excludeOnDemandKit)) {
+      if (excludeOnDemandKit) {
         match["kitAssemblyType"] = { $ne: KIT_ASSEMBLY_TYPE.onDemand };
       }
 
@@ -648,7 +648,7 @@ class InventoryRepository {
           leadTime: 1,
           leadTimeUnit: 1,
           qtyAtHand: "$totalQuantity",
-          billOfMaterial: excludeOnDemandKit ? 0 : 1,
+          billOfMaterial: excludeOnDemandKit ? undefined : 1,
         },
       });
 

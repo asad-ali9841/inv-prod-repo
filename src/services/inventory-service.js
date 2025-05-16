@@ -1997,7 +1997,9 @@ class InventoryService {
     const supplierCustomId = filterQuery.supplierCustomId;
     const searchText = filterQuery.searchText;
     const itemTypes = filterQuery.itemTypes;
-    const excludeOnDemandKit = filterQuery.excludeOnDemandKit;
+    const excludeOnDemandKit = ["true", true].includes(
+      filterQuery.excludeOnDemandKit
+    );
 
     const fetchedProducts = await this.respository.searchProductsDBV3(
       page,
