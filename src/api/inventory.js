@@ -219,6 +219,78 @@ module.exports = (app) => {
     }
   });
 
+  app.get("/shopify/app", async (req, res) => {
+    const { shop } = req.query;
+
+    if (!shop) {
+      return res.status(400).send("Missing shop parameter");
+    }
+
+    try {
+      // Check if the shop has installed the app
+      const { retrieveSession } = require("../services/sessionStorage");
+      const session = await retrieveSession(shop);
+
+      if (!session) {
+        // Not authenticated, redirect to auth
+        return res.redirect(`/shopify/auth?shop=${encodeURIComponent(shop)}`);
+      }
+
+      // Shop is authenticated, render your app's main page
+      // For an API-only backend, you might return a simple success page or redirect to your frontend
+
+      // Option 1: Return a simple HTML page
+      res.send(`
+      
+      
+        
+          <title>3DLogistiX Inventory App</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              text-align: center;
+              margin-top: 50px;
+            }
+            .container {
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 20px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+            }
+            h1 {
+              color: #004C3F;
+            }
+            .shop-info {
+              margin: 20px 0;
+              padding: 10px;
+              background-color: #f9f9f9;
+              border-radius: 5px;
+            }
+          </style>
+        
+        
+          <div class="container">
+            <h1>3DLogistiX Inventory App</h1>
+            <div class="shop-info">
+              <p>Successfully connected to: <strong>${shop}</strong></p>
+              <p>Authentication status: <strong>Active</strong></p>
+            </div>
+            <p>Your app is now installed and ready to use!</p>
+            <p>You can close this window and return to your inventory management system.</p>
+          </div>
+        
+      
+    `);
+
+      // Option 2: Redirect to your frontend application
+      // res.redirect(`https://your-frontend-app.com/dashboard?shop=${encodeURIComponent(shop)}`);
+    } catch (error) {
+      console.error("App route error:", error);
+      res.status(500).send(`Error accessing app: ${error.message}`);
+    }
+  });
+
   // *# HELPER APIs
   //Get product attributes
   app.get("/product/getattributes", async (req, res, next) => {
