@@ -26,8 +26,13 @@ const {
   INVENTORY_TRANSACTION_TYPES,
   shopifyOptionsLabels,
   productLabelsToKeys,
+  INTEGRATION_DOCUMENT_ID,
 } = require("./constants");
 const InventoryLog = require("../database/models/InventoryLog");
+const {
+  updateShopifyInventoryQuantity,
+} = require("../shopify-integration/shopify-product-service");
+const IntegrationSettingsModel = require("../database/models/Integrations");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -670,14 +675,14 @@ module.exports.getTotalQuantityForAllWarehouses = (totalQuantity) => {
   return Object.values(totalQuantity).reduce((acc, curr) => acc + curr, 0);
 };
 
-function getShopifyProductOptionsPayload(variant) {
+function getShopifyProductOptionsPayload(variant, fieldsToSync) {
   if (!variant) return [];
   const options = [];
 
   shopifyOptionsLabels.forEach((optionLabel) => {
     const key = productLabelsToKeys[optionLabel];
 
-    if (key) {
+    if (key && fieldsToSync.includes(key)) {
       const value = variant[key];
 
       if (value && value.length) {
@@ -699,9 +704,11 @@ function getShopifyProductOptionsPayload(variant) {
   return options;
 }
 
-module.exports.getShopifyCreateProductPayload = (
+module.exports.getShopifyProductPayload = (
   fullProduct,
-  variantIndex = 0
+  variantIndex = 0,
+  fieldsToSync,
+  status
 ) => {
   if (!fullProduct || !fullProduct.variants) return null;
 
@@ -710,44 +717,113 @@ module.exports.getShopifyCreateProductPayload = (
   if (!currentVariant) return null;
 
   const sellingPrice = currentVariant.sellingPrice;
-  const barcode = currentVariant.autoGenerateUnitTypeBarcode
-    ? currentVariant.variantId
-    : currentVariant.unitTypebarcodeValue;
-  const images =
-    currentVariant.variantImages.length > 0
-      ? currentVariant.variantImages
-      : fullProduct.images;
 
-  return {
-    title: currentVariant.variantDescription,
-    body_html: fullProduct.description,
-    vendor: fullProduct.supplierName,
-    product_type: fullProduct.category?.join(", "),
-    status: currentVariant.status,
+  const productPayload = {
+    status,
 
     // Product options (like Size, Color, etc.)
-    options: getShopifyProductOptionsPayload(currentVariant),
+    options: getShopifyProductOptionsPayload(currentVariant, fieldsToSync),
 
     // Product variants
     variants: [
       {
-        option1: currentVariant.size ?? "",
-        option2: currentVariant.color ?? "",
-        price: sellingPrice ? `${sellingPrice}` : "",
-        sku: currentVariant.SKU,
         inventory_management: "shopify",
         requires_shipping: true,
         taxable: true,
-        barcode,
-        weight: currentVariant.weight,
-        weight_unit: currentVariant.weightUnit,
       },
     ],
+  };
 
-    // Product images
-    images: images.map((src) => ({
+  // Conditionally add top-level product fields
+  if (fieldsToSync.includes("title")) {
+    productPayload.title = currentVariant.variantDescription;
+  }
+
+  if (fieldsToSync.includes("body_html")) {
+    productPayload.body_html = fullProduct.description;
+  }
+
+  if (fieldsToSync.includes("vendor")) {
+    productPayload.vendor = fullProduct.supplierName;
+  }
+
+  if (fieldsToSync.includes("product_type")) {
+    productPayload.product_type = fullProduct.category?.join(", ");
+  }
+
+  if (fieldsToSync.includes("images")) {
+    const images =
+      currentVariant.variantImages.length > 0
+        ? currentVariant.variantImages
+        : fullProduct.images;
+
+    productPayload.images = images.map((src) => ({
       src,
       alt: "",
-    })),
-  };
+    }));
+  }
+
+  // Conditionally add variant-level fields
+  const variant = productPayload.variants[0];
+
+  if (fieldsToSync.includes("weight")) {
+    variant.weight = currentVariant.weight;
+    variant.weight_unit = currentVariant.weightUnit;
+  }
+
+  if (fieldsToSync.includes("barcode")) {
+    const barcode = currentVariant.autoGenerateUnitTypeBarcode
+      ? currentVariant.variantId
+      : currentVariant.unitTypebarcodeValue;
+
+    variant.barcode = barcode;
+  }
+
+  if (fieldsToSync.includes("sku")) {
+    variant.sku = currentVariant.SKU;
+  }
+
+  if (fieldsToSync.includes("pricing")) {
+    variant.price = sellingPrice ? `${sellingPrice}` : "";
+  }
+
+  if (fieldsToSync.includes("size")) {
+    variant.option1 = currentVariant.size ?? "";
+  }
+
+  if (fieldsToSync.includes("color")) {
+    variant.option2 = currentVariant.color ?? "";
+  }
+
+  return productPayload;
+};
+
+module.exports.updateShopifyItemQuantity = async (variant) => {
+  if (!variant)
+    throw new Error("Missing variant for updating shopify inventory");
+
+  const integrationSettingsDoc = await IntegrationSettingsModel.findById(
+    INTEGRATION_DOCUMENT_ID
+  );
+
+  if (!integrationSettingsDoc)
+    throw new Error("Database not seeded. Please contact support");
+
+  const shopifyIntegration = integrationSettingsDoc.integrations.shopify;
+
+  if (
+    !shopifyIntegration ||
+    !shopifyIntegration.itemTypesToSync.includes(variant.itemType) ||
+    !shopifyIntegration.isActive ||
+    !shopifyIntegration.fieldsToSync.includes("inventory_levels")
+  )
+    return true;
+
+  const result = await updateShopifyInventoryQuantity(
+    variant.variantDescription,
+    this.getTotalQuantityForAllWarehouses(variant.totalQuantity),
+    shopifyIntegration.storeDomain
+  );
+
+  return result;
 };

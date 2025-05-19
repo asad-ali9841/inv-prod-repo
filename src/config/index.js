@@ -18,6 +18,7 @@ module.exports = {
   redis_url: process.env.redis_url,
   SYSTEM_Setup: process.env.SYSTEM_Setup,
   baseURL: process.env.baseURL,
+  hostName: process.env.hostName,
   Routes: {
     userService: process.env.user_service,
     warehouseService: process.env.warehouse_service,
@@ -31,9 +32,4 @@ module.exports = {
   CLOUDFRONT_BASE_URL: process.env.CLOUDFRONT_BASE_URL,
   shopifyClientId: process.env.shopify_client_id,
   shopifyClientSecret: process.env.shopify_client_secret,
-  shopifyStoreName: process.env.shopify_store_name,
-  hasShopifyIntegration:
-    Boolean(process.env.shopify_client_id) &&
-    Boolean(process.env.shopify_client_secret) &&
-    Boolean(process.env.shopify_store_name),
 };

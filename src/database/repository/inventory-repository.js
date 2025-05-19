@@ -36,8 +36,9 @@ const {
   generateInventoryLogs,
   parseArrayFilter,
   parseDateRangeFilter,
-  getShopifyCreateProductPayload,
+  getShopifyProductPayload,
   getTotalQuantityForAllWarehouses,
+  updateShopifyItemQuantity,
 } = require("../../utils/");
 const {
   PRODUCT_ARRAY_COLUMNS,
@@ -75,12 +76,13 @@ const {
   getTotalInventoryValuePerCategoryChartData,
 } = require("../../utils/chart-data-methods");
 const {
-  searchShopifyProducts,
-  getShopifyProductById,
-  updateShopifyInventoryQuantity,
   createShopifyProduct,
+  getShopifyProductByTitle,
+  updateShopifyProduct,
 } = require("../../shopify-integration/shopify-product-service");
-const { hasShopifyIntegration } = require("../../config");
+const {
+  retrieveSession,
+} = require("../../shopify-integration/shopify-session-service");
 
 /*
     This file serves the purpose to deal with database operations such as fetching and storing data
@@ -1436,7 +1438,13 @@ class InventoryRepository {
         // Extract the IDs of the created Variants
         variantIds = createdVariants.map((variant) => variant._id);
 
-        if (hasShopifyIntegration) {
+        const shopifyIntegration = await this.getIntegrationByKey("shopify");
+
+        if (
+          sharedData?.status === ITEM_STATUS.active &&
+          shopifyIntegration.isActive &&
+          shopifyIntegration.itemTypesToSync?.includes(itemType)
+        ) {
           const shopifyFullProduct = {
             ...sharedData.toObject(),
             variants: createdVariants,
@@ -1447,12 +1455,19 @@ class InventoryRepository {
             variantIndex < createdVariants.length;
             variantIndex++
           ) {
-            const shopifyPayload = getShopifyCreateProductPayload(
-              shopifyFullProduct,
-              variantIndex
-            );
-            console.log("payload for shopify:", shopifyPayload);
-            await createShopifyProduct(shopifyPayload);
+            if (createdVariants[variantIndex].status === ITEM_STATUS.active) {
+              const shopifyPayload = getShopifyProductPayload(
+                shopifyFullProduct,
+                variantIndex,
+                shopifyIntegration.fieldsToSync,
+                ITEM_STATUS.draft
+              );
+              console.log("payload for shopify:", shopifyPayload);
+              await createShopifyProduct(
+                shopifyPayload,
+                shopifyIntegration.storeDomain
+              );
+            }
           }
         }
       }
@@ -1917,7 +1932,65 @@ class InventoryRepository {
         throw new Error("Error updating Product");
       }
 
-      // 9. Commit transaction
+      const shopifyIntegration = await this.getIntegrationByKey("shopify");
+
+      if (
+        updatedItemShared?.status === ITEM_STATUS.active &&
+        shopifyIntegration.isActive &&
+        shopifyIntegration.itemTypesToSync?.includes(itemType)
+      ) {
+        const variants = updatedItemShared.variantIds;
+        const shopifyFullProduct = {
+          ...updatedItemShared.toObject(),
+          variants,
+        };
+
+        for (
+          let variantIndex = 0;
+          variantIndex < variants.length;
+          variantIndex++
+        ) {
+          if (variants[variantIndex].status === ITEM_STATUS.active) {
+            const variant = variants[variantIndex];
+
+            const existingShopifyItem = await getShopifyProductByTitle(
+              variant.variantDescription,
+              shopifyIntegration.storeDomain
+            );
+            console.log("existingShopifyItem:", existingShopifyItem);
+            if (!existingShopifyItem) {
+              const shopifyPayload = getShopifyProductPayload(
+                shopifyFullProduct,
+                variantIndex,
+                shopifyIntegration.fieldsToSync,
+                ITEM_STATUS.draft
+              );
+              console.log("payload for shopify:", shopifyPayload);
+
+              await createShopifyProduct(
+                shopifyPayload,
+                shopifyIntegration.storeDomain
+              );
+            } else {
+              const shopifyPayload = getShopifyProductPayload(
+                shopifyFullProduct,
+                variantIndex,
+                shopifyIntegration.fieldsToSync,
+                existingShopifyItem.status === "active"
+                  ? ITEM_STATUS.active
+                  : ITEM_STATUS.draft
+              );
+
+              await updateShopifyProduct(
+                existingShopifyItem.id,
+                shopifyPayload,
+                shopifyIntegration.storeDomain
+              );
+              console.log("payload for shopify:", shopifyPayload);
+            }
+          }
+        }
+      }
 
       // 10. Build response object
       const responseData = {
@@ -3000,12 +3073,7 @@ class InventoryRepository {
       // Push activity
       variant.activity.push(activity);
 
-      if (hasShopifyIntegration) {
-        await updateShopifyInventoryQuantity(
-          variant.variantDescription,
-          getTotalQuantityForAllWarehouses(variant.totalQuantity)
-        );
-      }
+      await updateShopifyItemQuantity(variant);
 
       // Save the updated variant
       await variant.save({ session });
@@ -3177,28 +3245,23 @@ class InventoryRepository {
       // 4) Log the activity
       doc.activity.push(activity);
 
-      // const newInventoryLog = new InventoryLog({
-      //   variantId: doc._id,
-      //   warehouseId,
-      //   poId,
-      //   initialQuantity: oldTotalQuantity,
-      //   finalQuantity: totalItemQuantity,
-      //   transactionType,
-      //   inventoryValue: roundToTwoDecimals(
-      //     totalItemQuantity * doc.purchasePrice
-      //   ),
-      // });
+      const newInventoryLog = new InventoryLog({
+        variantId: doc._id,
+        warehouseId,
+        poId,
+        initialQuantity: oldTotalQuantity,
+        finalQuantity: totalItemQuantity,
+        transactionType,
+        inventoryValue: roundToTwoDecimals(
+          totalItemQuantity * doc.purchasePrice
+        ),
+      });
 
-      // await newInventoryLog.save({ session });
+      await newInventoryLog.save({ session });
 
-      // doc.inventoryLogs.push(newInventoryLog._id);
+      doc.inventoryLogs.push(newInventoryLog._id);
 
-      // if (hasShopifyIntegration) {
-      //   await updateShopifyInventoryQuantity(
-      //     doc.variantDescription,
-      //     totalItemQuantity
-      //   );
-      // }
+      await updateShopifyItemQuantity(doc);
 
       // 5) Save changes
       await doc.save({ session });
@@ -3263,28 +3326,23 @@ class InventoryRepository {
       // 4) Log activity
       doc.activity.push(activity);
 
-      // const newInventoryLog = new InventoryLog({
-      //   variantId: doc._id,
-      //   warehouseId,
-      //   soId,
-      //   initialQuantity: oldTotalQuantity,
-      //   finalQuantity: totalItemQuantity,
-      //   transactionType,
-      //   inventoryValue: roundToTwoDecimals(
-      //     totalItemQuantity * doc.purchasePrice
-      //   ),
-      // });
+      const newInventoryLog = new InventoryLog({
+        variantId: doc._id,
+        warehouseId,
+        soId,
+        initialQuantity: oldTotalQuantity,
+        finalQuantity: totalItemQuantity,
+        transactionType,
+        inventoryValue: roundToTwoDecimals(
+          totalItemQuantity * doc.purchasePrice
+        ),
+      });
 
-      // await newInventoryLog.save({ session });
+      await newInventoryLog.save({ session });
 
-      // doc.inventoryLogs.push(newInventoryLog._id);
+      doc.inventoryLogs.push(newInventoryLog._id);
 
-      // if (hasShopifyIntegration) {
-      //   await updateShopifyInventoryQuantity(
-      //     doc.variantDescription,
-      //     totalItemQuantity
-      //   );
-      // }
+      await updateShopifyItemQuantity(doc);
 
       // 5) Save the document
       await doc.save({ session });
@@ -3417,7 +3475,11 @@ class InventoryRepository {
 
   async validateShopifyStore(storeDomain) {
     try {
-      return storeDomain;
+      const session = await retrieveSession(storeDomain);
+
+      if (!session) return false;
+
+      return true;
     } catch (error) {
       console.error("Error validating shopify store domain:", error);
       throw error;
