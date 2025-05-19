@@ -54,6 +54,7 @@ module.exports = (app) => {
   // Shopify routes
   // 1. Initial Auth Route - Start OAuth process
   app.get("/shopify/auth", async (req, res) => {
+    console.log("Auth route hit:", req.query);
     const { shop } = req.query;
 
     if (!shop) {
@@ -82,12 +83,14 @@ module.exports = (app) => {
       req.session.shop = shop;
 
       // Build the authorization URL
-      const redirectUrl = await shopify.auth.beginAuth({
+      const redirectUrl = await shopify.auth.begin({
         shop,
-        redirectPath: "/shopify/auth/callback",
+        callbackPath: "/shopify/auth/callback",
         isOnline: true,
         state,
       });
+
+      console.log("Redirect URL in /shopify/auth:", redirectUrl);
 
       // Redirect to Shopify's authorization page
       res.redirect(redirectUrl);
@@ -99,37 +102,122 @@ module.exports = (app) => {
 
   // 2. OAuth Callback Route - Handle the callback from Shopify
   app.get("/shopify/auth/callback", async (req, res) => {
-    const { shop, state } = req.query;
+    console.log("Auth callback route (/shopify/auth/callback) hit:", req);
+    const { shop, state, code } = req.query;
+
+    // Verify required parameters
+    if (!shop || !state || !code) {
+      return res.status(400).send("Missing required parameters");
+    }
 
     try {
       // Verify state matches to prevent CSRF attacks
       if (state !== req.session.state) {
+        console.error("State mismatch:", {
+          queryState: state,
+          sessionState: req.session.state,
+        });
         return res.status(403).send("Request origin cannot be verified");
       }
 
-      // Complete the OAuth process
-      const session = await shopify.auth.validateAuthCallback({
+      console.log("State verified, processing auth callback");
+
+      // Complete the OAuth process using the callback method
+      const session = await shopify.auth.callback({
         query: req.query,
         state: req.session.state,
       });
 
-      // Store the session using your service
+      console.log("Auth callback processed successfully:", {
+        shop: session.shop,
+        scope: session.scope,
+        isOnline: session.isOnline,
+        expires: session.expires,
+      });
+
+      // Store the session
       await storeSession(session);
+      console.log("Session stored successfully");
 
       // Clear session variables
       req.session.state = undefined;
       req.session.shop = undefined;
 
+      console.log("Session variables cleared, redirecting to app");
+
       // Redirect to app home
-      res.redirect("/shopify/app");
+      res.redirect(`/shopify/app?shop=${encodeURIComponent(shop)}`);
     } catch (error) {
       console.error("OAuth callback error:", error);
-      res.status(500).send(`Error completing OAuth: ${error.message}`);
+
+      // Provide more detailed error information
+      let errorMessage = `Error completing OAuth: ${error.message}`;
+
+      // Check for specific error types
+      if (error.message.includes("invalid_request")) {
+        errorMessage = "Invalid request parameters. Please try again.";
+      } else if (error.message.includes("access_denied")) {
+        errorMessage =
+          "Access was denied. The user may have declined the authorization.";
+      } else if (error.message.includes("invalid_scope")) {
+        errorMessage = "The requested scope is invalid or not permitted.";
+      }
+
+      res.status(500).send(`
+      
+      
+        
+          <title>Authentication Error</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              text-align: center;
+              margin-top: 50px;
+            }
+            .error-container {
+              max-width: 600px;
+              margin: 0 auto;
+              padding: 20px;
+              border: 1px solid #f5c6cb;
+              border-radius: 5px;
+              background-color: #f8d7da;
+              color: #721c24;
+            }
+            h1 {
+              color: #721c24;
+            }
+            .retry-link {
+              margin-top: 20px;
+              display: inline-block;
+              padding: 10px 20px;
+              background-color: #007bff;
+              color: white;
+              text-decoration: none;
+              border-radius: 5px;
+            }
+          </style>
+        
+        
+          <div class="error-container">
+            <h1>Authentication Error</h1>
+            <p>${errorMessage}</p>
+            <p>Error details: ${error.message}</p>
+            <a href="/shopify/auth?shop=${encodeURIComponent(
+              shop
+            )}" class="retry-link">Try Again</a>
+          </div>
+        
+      
+    `);
     }
   });
 
   // 3. Auth Verification Route - Check if a shop is authenticated
   app.get("/shopify/auth/verify", async (req, res) => {
+    console.log(
+      "Auth verification route (/shopify/auth/verify) hit with req:",
+      req
+    );
     const { shop } = req.query;
 
     if (!shop) {
@@ -220,6 +308,7 @@ module.exports = (app) => {
   });
 
   app.get("/shopify/app", async (req, res) => {
+    console.log("shopify App route hit:", req);
     const { shop } = req.query;
 
     if (!shop) {
