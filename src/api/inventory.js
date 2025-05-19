@@ -228,7 +228,6 @@ module.exports = (app) => {
 
     try {
       // Check if the shop has installed the app
-      const { retrieveSession } = require("../services/sessionStorage");
       const session = await retrieveSession(shop);
 
       if (!session) {
