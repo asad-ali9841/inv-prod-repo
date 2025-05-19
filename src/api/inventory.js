@@ -90,7 +90,12 @@ module.exports = (app) => {
 
   // 2. OAuth Callback Route - Handle the callback from Shopify
   app.get("/shopify/auth/callback", async (req, res) => {
-    console.log("Auth callback route (/shopify/auth/callback) hit:", req);
+    console.log(
+      "Auth callback route (/shopify/auth/callback) hit:",
+      req,
+      "and req.query:",
+      req.query
+    );
 
     try {
       // Complete the OAuth process using the callback method
@@ -273,7 +278,7 @@ module.exports = (app) => {
   });
 
   app.get("/shopify/app", async (req, res) => {
-    console.log("shopify App route hit:", req);
+    console.log("shopify App route hit:", req, "and req.query:", req.query);
     const { shop } = req.query;
 
     if (!shop) {
