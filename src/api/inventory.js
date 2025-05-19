@@ -934,7 +934,7 @@ module.exports = (app) => {
     return res.json(result);
   });
 
-  app.post("/integration/shopify/validatestore", userAuth, async (req, res) => {
+  app.post("/integration/validateshopifystore", userAuth, async (req, res) => {
     const result = await service.validateShopifyStore(req.query.storeDomain);
     return res.json(result);
   });
