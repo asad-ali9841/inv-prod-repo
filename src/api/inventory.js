@@ -6,6 +6,7 @@ const {
   BUCKET_REGION,
   LOCAL_ACCESS_KEY,
   LOCAL_SECRET_KEY,
+  baseURL,
 } = require("../config/index");
 const ExcelJS = require("exceljs");
 const {
@@ -115,7 +116,7 @@ module.exports = (app) => {
       console.log("Session stored successfully");
 
       // Redirect to app home
-      res.redirect(`/shopify/app?shop=${encodeURIComponent(session.shop)}`);
+      res.redirect(`${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(session.shop)}`);
     } catch (error) {
       console.error("OAuth callback error:", error);
 
@@ -288,10 +289,10 @@ module.exports = (app) => {
       // Check if the shop has installed the app
       const session = await retrieveSession(shop);
       console.log("Session retrieved:", session);
-
       if (!session) {
-        // Not authenticated, redirect to auth
-        return res.redirect(`/shopify/auth?shop=${encodeURIComponent(shop)}`);
+        // Use full URL for redirect and pass along all query parameters
+        const queryParams = new URLSearchParams(req.query).toString();
+        return res.redirect(`${baseURL}/inventory/shopify/auth?${queryParams}`);
       }
 
       // Shop is authenticated, render your app's main page
