@@ -17,6 +17,7 @@ module.exports = {
   DB_Cluster: process.env.DB_Cluster,
   redis_url: process.env.redis_url,
   SYSTEM_Setup: process.env.SYSTEM_Setup,
+  SESSION_SECRET: process.env.SESSION_SECRET,
   baseURL: process.env.baseURL,
   hostName: process.env.hostName,
   Routes: {

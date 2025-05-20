@@ -40,6 +40,7 @@ const {
   deleteSession,
 } = require("../shopify-integration/shopify-session-service");
 const { shopify } = require("../shopify-integration/shopify-api-config");
+const shopifySessionMiddleware = require("./middlewares/shopfiySession");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -54,7 +55,7 @@ module.exports = (app) => {
 
   // Shopify routes
   // 1. Initial Auth Route - Start OAuth process
-  app.get("/shopify/auth", async (req, res) => {
+  app.get("/shopify/auth", shopifySessionMiddleware, async (req, res) => {
     console.log("Auth route hit:", req.query);
     const { shop } = req.query;
 
@@ -81,8 +82,7 @@ module.exports = (app) => {
 
       req.session.state = state;
       req.session.shop = shop;
-      if (req.session.save) {
-        console.log("Session saved, it has a save method");
+      if (typeof req.session.save === "function") {
         await req.session.save();
       }
 
@@ -100,54 +100,59 @@ module.exports = (app) => {
   });
 
   // 2. OAuth Callback Route - Handle the callback from Shopify
-  app.get("/shopify/auth/callback", async (req, res) => {
-    console.log(
-      "Auth callback route (/shopify/auth/callback) hit:",
-      "and req.query:",
-      req.query
-    );
-
-    try {
-      // Complete the OAuth process using the callback method
-      const { session } = await shopify.auth.callback({
-        rawRequest: req,
-        rawResponse: res,
-      });
-
-      console.log("Auth callback processed successfully:", {
-        shop: session.shop,
-        scope: session.scope,
-        isOnline: session.isOnline,
-        expires: session.expires,
-      });
-
-      // Store the session
-      await storeSession(session);
-      console.log("Session stored successfully");
-
-      // Redirect to app home
-      res.redirect(
-        `${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(
-          session.shop
-        )}`
+  app.get(
+    "/shopify/auth/callback",
+    shopifySessionMiddleware,
+    async (req, res) => {
+      console.log(
+        "Auth callback route (/shopify/auth/callback) hit:",
+        "and req.query:",
+        req.query,
+        "and req.session:",
+        req.session
       );
-    } catch (error) {
-      console.error("OAuth callback error:", error);
 
-      // Provide more detailed error information
-      let errorMessage = `Error completing OAuth: ${error.message}`;
+      try {
+        // Complete the OAuth process using the callback method
+        const { session } = await shopify.auth.callback({
+          rawRequest: req,
+          rawResponse: res,
+        });
 
-      // Check for specific error types
-      if (error.message.includes("invalid_request")) {
-        errorMessage = "Invalid request parameters. Please try again.";
-      } else if (error.message.includes("access_denied")) {
-        errorMessage =
-          "Access was denied. The user may have declined the authorization.";
-      } else if (error.message.includes("invalid_scope")) {
-        errorMessage = "The requested scope is invalid or not permitted.";
-      }
+        console.log("Auth callback processed successfully:", {
+          shop: session.shop,
+          scope: session.scope,
+          isOnline: session.isOnline,
+          expires: session.expires,
+        });
 
-      res.status(500).send(`
+        // Store the session
+        await storeSession(session);
+        console.log("Session stored successfully");
+
+        // Redirect to app home
+        res.redirect(
+          `${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(
+            session.shop
+          )}`
+        );
+      } catch (error) {
+        console.error("OAuth callback error:", error);
+
+        // Provide more detailed error information
+        let errorMessage = `Error completing OAuth: ${error.message}`;
+
+        // Check for specific error types
+        if (error.message.includes("invalid_request")) {
+          errorMessage = "Invalid request parameters. Please try again.";
+        } else if (error.message.includes("access_denied")) {
+          errorMessage =
+            "Access was denied. The user may have declined the authorization.";
+        } else if (error.message.includes("invalid_scope")) {
+          errorMessage = "The requested scope is invalid or not permitted.";
+        }
+
+        res.status(500).send(`
       
       
         
@@ -193,8 +198,9 @@ module.exports = (app) => {
         
       
     `);
+      }
     }
-  });
+  );
 
   // 3. Auth Verification Route - Check if a shop is authenticated
   app.get("/shopify/auth/verify", async (req, res) => {
