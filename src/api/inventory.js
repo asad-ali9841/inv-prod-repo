@@ -128,7 +128,7 @@ module.exports = (app) => {
         req.session
       );
 
-      const { shop, code, state } = req.query;
+      const { shop, code } = req.query;
 
       if (!shop || !code) {
         console.log("says missing params");
@@ -136,15 +136,6 @@ module.exports = (app) => {
       }
 
       try {
-        // Verify state parameter to prevent CSRF attacks
-        if (!req.session.state || state !== req.session.state) {
-          console.error("State mismatch or missing:", {
-            queryState: state,
-            sessionState: req.session.state,
-          });
-          return res.status(403).send("Invalid state parameter");
-        }
-
         console.log("State verified, exchanging code for access token");
 
         // Manually exchange the code for an access token
