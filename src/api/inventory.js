@@ -7,6 +7,8 @@ const {
   LOCAL_ACCESS_KEY,
   LOCAL_SECRET_KEY,
   baseURL,
+  shopifyClientId,
+  shopifyClientSecret,
 } = require("../config/index");
 const ExcelJS = require("exceljs");
 const {
@@ -54,7 +56,6 @@ module.exports = (app) => {
   const service = new InventoryService();
 
   // Shopify routes
-  // 1. Initial Auth Route - Start OAuth process
   app.get("/shopify/auth", shopifySessionMiddleware, async (req, res) => {
     console.log("Auth route hit:", req.query);
     const { shop } = req.query;
@@ -68,7 +69,7 @@ module.exports = (app) => {
       const existingSession = await retrieveSession(shop);
 
       if (existingSession) {
-        // Already authenticated,
+        // Already authenticated
         return res.json({
           success: true,
           message: "Authenticated successfully",
@@ -77,11 +78,14 @@ module.exports = (app) => {
         });
       }
 
-      // Set up the OAuth cookie
+      // Generate a state value for CSRF protection
       const state = shopify.auth.nonce();
+      console.log("Generated state:", state);
 
+      // Store state in session
       req.session.state = state;
       req.session.shop = shop;
+
       // Save the session explicitly before continuing
       await new Promise((resolve, reject) => {
         req.session.save((err) => {
@@ -95,118 +99,169 @@ module.exports = (app) => {
         });
       });
 
-      await shopify.auth.begin({
-        shop: shopify.utils.sanitizeShop(req.query.shop, true),
-        callbackPath: "/dev/inventory/shopify/auth/callback",
-        isOnline: false,
-        rawRequest: req,
-        rawResponse: res,
-      });
+      // Instead of using shopify.auth.begin, manually construct the authorization URL
+      const sanitizedShop = shopify.utils.sanitizeShop(shop, true);
+      const scopes = shopify.config.scopes.join(",");
+      const redirectUri = encodeURIComponent(
+        `${baseURL}/inventory/shopify/auth/callback`
+      );
+
+      const authUrl = `https://${sanitizedShop}/admin/oauth/authorize?client_id=${shopifyClientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+
+      console.log("Redirecting to manually constructed auth URL:", authUrl);
+      res.redirect(authUrl);
     } catch (error) {
       console.error("Auth error:", error);
       res.status(500).send(`Authentication error: ${error.message}`);
     }
   });
 
-  // 2. OAuth Callback Route - Handle the callback from Shopify
   app.get(
     "/shopify/auth/callback",
-    // shopifySessionMiddleware,
+    shopifySessionMiddleware,
     async (req, res) => {
       console.log(
-        "Auth callback route (/shopify/auth/callback) hit:",
-        "and req.query:",
+        "Auth callback route hit:",
+        "query:",
         req.query,
-        "and req.session:",
+        "session:",
         req.session
       );
 
+      const { shop, code, state } = req.query;
+
+      if (!shop || !code) {
+        console.log("says missing params");
+        return res.status(400).send("Missing required parameters");
+      }
+
       try {
-        // Complete the OAuth process using the callback method
-        const { session } = await shopify.auth.callback({
-          rawRequest: req,
-          rawResponse: res,
-        });
+        // Verify state parameter to prevent CSRF attacks
+        if (!req.session.state || state !== req.session.state) {
+          console.error("State mismatch or missing:", {
+            queryState: state,
+            sessionState: req.session.state,
+          });
+          return res.status(403).send("Invalid state parameter");
+        }
 
-        console.log("Auth callback processed successfully:", {
-          shop: session.shop,
-          scope: session.scope,
-          isOnline: session.isOnline,
-          expires: session.expires,
-        });
+        console.log("State verified, exchanging code for access token");
 
-        // Store the session
-        await storeSession(session);
-        console.log("Session stored successfully");
-
-        // Redirect to app home
-        res.redirect(
-          `${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(
-            session.shop
-          )}`
+        // Manually exchange the code for an access token
+        const accessTokenResponse = await fetch(
+          `https://${shop}/admin/oauth/access_token`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              client_id: shopifyClientId,
+              client_secret: shopifyClientSecret,
+              code,
+            }),
+          }
         );
+
+        const tokenData = await accessTokenResponse.json();
+        console.log("Token exchange response:", tokenData);
+
+        if (tokenData.access_token) {
+          // Create a session object
+          const shopifySession = {
+            shop,
+            accessToken: tokenData.access_token,
+            scope: tokenData.scope,
+            isOnline: false,
+            expires: null,
+          };
+
+          // Store the session
+          await storeSession(shopifySession);
+          console.log("Session stored successfully");
+
+          // Clear session variables
+          req.session.state = undefined;
+          req.session.shop = undefined;
+
+          // Save the session changes
+          await new Promise((resolve, reject) => {
+            req.session.save((err) => {
+              if (err) {
+                console.error("Error saving session:", err);
+                reject(err);
+              } else {
+                console.log("Session updated successfully");
+                resolve();
+              }
+            });
+          });
+
+          // Redirect to app home
+          return res.redirect(
+            `/dev/inventory/shopify/app?shop=${encodeURIComponent(shop)}`
+          );
+        } else {
+          throw new Error(
+            "Failed to get access token: " + JSON.stringify(tokenData)
+          );
+        }
       } catch (error) {
         console.error("OAuth callback error:", error);
 
-        // Provide more detailed error information
-        let errorMessage = `Error completing OAuth: ${error.message}`;
-
-        // Check for specific error types
-        if (error.message.includes("invalid_request")) {
-          errorMessage = "Invalid request parameters. Please try again.";
-        } else if (error.message.includes("access_denied")) {
-          errorMessage =
-            "Access was denied. The user may have declined the authorization.";
-        } else if (error.message.includes("invalid_scope")) {
-          errorMessage = "The requested scope is invalid or not permitted.";
-        }
-
         res.status(500).send(`
-      
-      
-        
-          <title>Authentication Error</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              text-align: center;
-              margin-top: 50px;
-            }
-            .error-container {
-              max-width: 600px;
-              margin: 0 auto;
-              padding: 20px;
-              border: 1px solid #f5c6cb;
-              border-radius: 5px;
-              background-color: #f8d7da;
-              color: #721c24;
-            }
-            h1 {
-              color: #721c24;
-            }
-            .retry-link {
-              margin-top: 20px;
-              display: inline-block;
-              padding: 10px 20px;
-              background-color: #007bff;
-              color: white;
-              text-decoration: none;
-              border-radius: 5px;
-            }
-          </style>
         
         
-          <div class="error-container">
-            <h1>Authentication Error</h1>
-            <p>${errorMessage}</p>
-            <p>Error details: ${error.message}</p>
-            <a href="/shopify/auth?shop=${encodeURIComponent(
-              req.query.shop
-            )}" class="retry-link">Try Again</a>
-          </div>
+          
+            <title>Authentication Error</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                margin-top: 50px;
+              }
+              .error-container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                border: 1px solid #f5c6cb;
+                border-radius: 5px;
+                background-color: #f8d7da;
+                color: #721c24;
+              }
+              h1 {
+                color: #721c24;
+              }
+              .retry-link {
+                margin-top: 20px;
+                display: inline-block;
+                padding: 10px 20px;
+                background-color: #007bff;
+                color: white;
+                text-decoration: none;
+                border-radius: 5px;
+              }
+              pre {
+                text-align: left;
+                background-color: #f8f9fa;
+                padding: 10px;
+                border-radius: 5px;
+                overflow: auto;
+              }
+            </style>
+          
+          
+            <div class="error-container">
+              <h1>Authentication Error</h1>
+              <p>Error completing OAuth: ${error.message}</p>
+              <pre>${error.stack || error.message}</pre>
+              <a href="/shopify/auth?shop=${encodeURIComponent(
+                shop || ""
+              )}" class="retry-link">Try Again</a>
+            </div>
+          
         
-      
-    `);
+      `);
       }
     }
   );
