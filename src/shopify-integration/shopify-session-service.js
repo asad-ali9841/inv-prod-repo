@@ -1,4 +1,4 @@
-const { ShopifySession } = require("../database/models");
+const ShopifySession = require("../database/models/ShopifySession");
 
 // Store a new session or update an existing one
 const storeSession = async (session) => {

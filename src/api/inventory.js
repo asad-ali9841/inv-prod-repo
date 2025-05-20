@@ -92,7 +92,6 @@ module.exports = (app) => {
   app.get("/shopify/auth/callback", async (req, res) => {
     console.log(
       "Auth callback route (/shopify/auth/callback) hit:",
-      req,
       "and req.query:",
       req.query
     );
@@ -278,7 +277,7 @@ module.exports = (app) => {
   });
 
   app.get("/shopify/app", async (req, res) => {
-    console.log("shopify App route hit:", req, "and req.query:", req.query);
+    console.log("shopify App route hit and req.query:", req.query);
     const { shop } = req.query;
 
     if (!shop) {
@@ -288,6 +287,7 @@ module.exports = (app) => {
     try {
       // Check if the shop has installed the app
       const session = await retrieveSession(shop);
+      console.log("Session retrieved:", session);
 
       if (!session) {
         // Not authenticated, redirect to auth

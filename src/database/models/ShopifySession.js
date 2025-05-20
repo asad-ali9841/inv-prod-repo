@@ -32,4 +32,6 @@ const shopifySessionSchema = new mongoose.Schema({
   },
 });
 
-module.exports = mongoose.model("ShopifySession", shopifySessionSchema);
+const ShopifySession = mongoose.model("ShopifySession", shopifySessionSchema);
+
+module.exports = ShopifySession;
