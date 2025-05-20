@@ -101,7 +101,7 @@ module.exports = (app) => {
 
       // Instead of using shopify.auth.begin, manually construct the authorization URL
       const sanitizedShop = shopify.utils.sanitizeShop(shop, true);
-      const scopes = shopify.config.scopes.join(",");
+      const scopes = shopify.config.scopes.toString();
       const redirectUri = encodeURIComponent(
         `${baseURL}/inventory/shopify/auth/callback`
       );
