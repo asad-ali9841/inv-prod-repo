@@ -20,6 +20,7 @@ const {
   formatDateFromTimestamp,
   mapArrayToObject,
   getTotalQuantityForAllWarehouses,
+  getShopifyAppHTML,
 } = require("../utils/index");
 var qs = require("qs");
 const {
@@ -111,7 +112,6 @@ module.exports = (app) => {
     const { shop, code, state } = req.query;
 
     if (!shop || !code) {
-      console.log("says missing params");
       return res.status(400).send("Missing required parameters");
     }
 
@@ -161,7 +161,7 @@ module.exports = (app) => {
 
         // Redirect to app home
         return res.redirect(
-          `/dev/inventory/shopify/app?shop=${encodeURIComponent(shop)}`
+          `${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(shop)}`
         );
       } else {
         throw new Error(
@@ -227,101 +227,6 @@ module.exports = (app) => {
     }
   });
 
-  // 3. Auth Verification Route - Check if a shop is authenticated
-  app.get("/shopify/auth/verify", async (req, res) => {
-    console.log(
-      "Auth verification route (/shopify/auth/verify) hit with req:",
-      req
-    );
-    const { shop } = req.query;
-
-    if (!shop) {
-      return res.status(400).json({
-        authenticated: false,
-        message: "Shop parameter is required",
-      });
-    }
-
-    try {
-      const session = await retrieveSession(shop);
-
-      return res.json({
-        authenticated: !!session,
-        scopes: session?.scope || null,
-        expiresAt: session?.expires || null,
-      });
-    } catch (error) {
-      console.error("Error checking authentication:", error);
-      return res.status(500).json({
-        authenticated: false,
-        message: "Error checking authentication",
-      });
-    }
-  });
-
-  // 4. Token Refresh Route (optional) - Refresh access tokens
-  app.post("/shopify/auth/refresh", async (req, res) => {
-    const { shop } = req.body;
-
-    if (!shop) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Shop parameter is required" });
-    }
-
-    try {
-      const session = await retrieveSession(shop);
-
-      if (!session) {
-        return res
-          .status(404)
-          .json({ success: false, message: "No session found for this shop" });
-      }
-
-      // For online tokens only - offline tokens don't expire
-      if (session.isOnline && session.expires) {
-        // Check if token is expired or about to expire (within 1 hour)
-        const expiryDate = new Date(session.expires);
-        const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
-
-        if (expiryDate <= oneHourFromNow) {
-          // Token needs refreshing - implement token refresh logic here
-          // Note: This depends on your Shopify API library's capabilities
-
-          // Example (pseudocode):
-          // const newSession = await shopify.auth.refreshToken(session);
-          // await storeSession(newSession);
-
-          return res.json({ success: true, message: "Token refreshed" });
-        }
-      }
-
-      return res.json({ success: true, message: "Token is valid" });
-    } catch (error) {
-      console.error("Error refreshing token:", error);
-      return res
-        .status(500)
-        .json({ success: false, message: "Error refreshing token" });
-    }
-  });
-
-  // 5. Logout Route - End the session
-  app.get("/shopify/auth/logout", async (req, res) => {
-    const { shop } = req.query;
-
-    if (!shop) {
-      return res.status(400).send("Missing shop parameter");
-    }
-
-    try {
-      await deleteSession(shop);
-      res.redirect("/shopify/auth?shop=" + encodeURIComponent(shop));
-    } catch (error) {
-      console.error("Logout error:", error);
-      res.status(500).send("Error during logout");
-    }
-  });
-
   app.get("/shopify/app", async (req, res) => {
     console.log("shopify App route hit and req.query:", req.query);
     const { shop } = req.query;
@@ -344,51 +249,7 @@ module.exports = (app) => {
       // For an API-only backend, you might return a simple success page or redirect to your frontend
 
       // Option 1: Return a simple HTML page
-      res.send(`
-      
-      
-        
-          <title>3DLogistiX Inventory App</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              text-align: center;
-              margin-top: 50px;
-            }
-            .container {
-              max-width: 800px;
-              margin: 0 auto;
-              padding: 20px;
-              border: 1px solid #ddd;
-              border-radius: 5px;
-            }
-            h1 {
-              color: #004C3F;
-            }
-            .shop-info {
-              margin: 20px 0;
-              padding: 10px;
-              background-color: #f9f9f9;
-              border-radius: 5px;
-            }
-          </style>
-        
-        
-          <div class="container">
-            <h1>3DLogistiX Inventory App</h1>
-            <div class="shop-info">
-              <p>Successfully connected to: <strong>${shop}</strong></p>
-              <p>Authentication status: <strong>Active</strong></p>
-            </div>
-            <p>Your app is now installed and ready to use!</p>
-            <p>You can close this window and return to your inventory management system.</p>
-          </div>
-        
-      
-    `);
-
-      // Option 2: Redirect to your frontend application
-      // res.redirect(`https://your-frontend-app.com/dashboard?shop=${encodeURIComponent(shop)}`);
+      res.send(getShopifyAppHTML(shop));
     } catch (error) {
       console.error("App route error:", error);
       res.status(500).send(`Error accessing app: ${error.message}`);

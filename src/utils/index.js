@@ -787,12 +787,12 @@ module.exports.getShopifyProductPayload = (
     variant.price = sellingPrice ? `${sellingPrice}` : "";
   }
 
-  if (fieldsToSync.includes("size")) {
-    variant.option1 = currentVariant.size ?? "";
+  if (fieldsToSync.includes("color")) {
+    variant.option1 = currentVariant.color ?? "";
   }
 
-  if (fieldsToSync.includes("color")) {
-    variant.option2 = currentVariant.color ?? "";
+  if (fieldsToSync.includes("size")) {
+    variant.option2 = currentVariant.size ?? "";
   }
 
   return productPayload;
@@ -827,3 +827,41 @@ module.exports.updateShopifyItemQuantity = async (variant) => {
 
   return result;
 };
+
+module.exports.getShopifyAppHTML = (shop) => `  
+          <title>3DLogistiX Integration</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              text-align: center;
+              margin-top: 50px;
+            }
+            .container {
+              max-width: 800px;
+              margin: 0 auto;
+              padding: 20px;
+              border: 1px solid #ddd;
+              border-radius: 5px;
+            }
+            h1 {
+              color: #004C3F;
+            }
+            .shop-info {
+              margin: 20px 0;
+              padding: 10px;
+              background-color: #f9f9f9;
+              border-radius: 5px;
+            }
+          </style>
+        
+        
+          <div class="container">
+            <h1>3DLogistiX Integration</h1>
+            <div class="shop-info">
+              <p>Successfully connected to: <strong>${shop}</strong></p>
+              <p>Authentication status: <strong>Active</strong></p>
+            </div>
+            <p>Your app is now installed and ready to use!</p>
+            <p>You can close this window and return to your inventory management system.</p>
+          </div>
+    `;
