@@ -82,9 +82,18 @@ module.exports = (app) => {
 
       req.session.state = state;
       req.session.shop = shop;
-      if (typeof req.session.save === "function") {
-        await req.session.save();
-      }
+      // Save the session explicitly before continuing
+      await new Promise((resolve, reject) => {
+        req.session.save((err) => {
+          if (err) {
+            console.error("Error saving session:", err);
+            reject(err);
+          } else {
+            console.log("Session saved successfully with state:", state);
+            resolve();
+          }
+        });
+      });
 
       await shopify.auth.begin({
         shop: shopify.utils.sanitizeShop(req.query.shop, true),
@@ -102,7 +111,7 @@ module.exports = (app) => {
   // 2. OAuth Callback Route - Handle the callback from Shopify
   app.get(
     "/shopify/auth/callback",
-    shopifySessionMiddleware,
+    // shopifySessionMiddleware,
     async (req, res) => {
       console.log(
         "Auth callback route (/shopify/auth/callback) hit:",
