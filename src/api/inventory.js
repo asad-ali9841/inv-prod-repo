@@ -42,7 +42,10 @@ const {
   deleteSession,
 } = require("../shopify-integration/shopify-session-service");
 const { shopify } = require("../shopify-integration/shopify-api-config");
-const shopifySessionMiddleware = require("./middlewares/shopfiySession");
+const {
+  storeState,
+  verifyState,
+} = require("../shopify-integration/oauthStateService");
 
 const s3 = new S3Client({
   region: BUCKET_REGION,
@@ -56,7 +59,7 @@ module.exports = (app) => {
   const service = new InventoryService();
 
   // Shopify routes
-  app.get("/shopify/auth", shopifySessionMiddleware, async (req, res) => {
+  app.get("/shopify/auth", async (req, res) => {
     console.log("Auth route hit:", req.query);
     const { shop } = req.query;
 
@@ -82,22 +85,8 @@ module.exports = (app) => {
       const state = shopify.auth.nonce();
       console.log("Generated state:", state);
 
-      // Store state in session
-      req.session.state = state;
-      req.session.shop = shop;
-
-      // Save the session explicitly before continuing
-      await new Promise((resolve, reject) => {
-        req.session.save((err) => {
-          if (err) {
-            console.error("Error saving session:", err);
-            reject(err);
-          } else {
-            console.log("Session saved successfully with state:", state);
-            resolve();
-          }
-        });
-      });
+      // Store state in database
+      await storeState(shop, state);
 
       // Instead of using shopify.auth.begin, manually construct the authorization URL
       const sanitizedShop = shopify.utils.sanitizeShop(shop, true);
@@ -116,91 +105,73 @@ module.exports = (app) => {
     }
   });
 
-  app.get(
-    "/shopify/auth/callback",
-    shopifySessionMiddleware,
-    async (req, res) => {
-      console.log(
-        "Auth callback route hit:",
-        "query:",
-        req.query,
-        "session:",
-        req.session
-      );
+  app.get("/shopify/auth/callback", async (req, res) => {
+    console.log("Auth callback route hit:", "query:", req.query);
 
-      const { shop, code } = req.query;
+    const { shop, code, state } = req.query;
 
-      if (!shop || !code) {
-        console.log("says missing params");
-        return res.status(400).send("Missing required parameters");
+    if (!shop || !code) {
+      console.log("says missing params");
+      return res.status(400).send("Missing required parameters");
+    }
+
+    try {
+      // Verify state parameter to prevent CSRF attacks
+      const isValidState = await verifyState(shop, state);
+
+      if (!isValidState) {
+        console.error("Invalid state parameter");
+        return res.status(403).send("Invalid state parameter");
       }
 
-      try {
-        console.log("State verified, exchanging code for access token");
+      console.log("State verified, exchanging code for access token");
 
-        // Manually exchange the code for an access token
-        const accessTokenResponse = await fetch(
-          `https://${shop}/admin/oauth/access_token`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              client_id: shopifyClientId,
-              client_secret: shopifyClientSecret,
-              code,
-            }),
-          }
-        );
-
-        const tokenData = await accessTokenResponse.json();
-        console.log("Token exchange response:", tokenData);
-
-        if (tokenData.access_token) {
-          // Create a session object
-          const shopifySession = {
-            shop,
-            accessToken: tokenData.access_token,
-            scope: tokenData.scope,
-            isOnline: false,
-            expires: null,
-          };
-
-          // Store the session
-          await storeSession(shopifySession);
-          console.log("Session stored successfully");
-
-          // Clear session variables
-          req.session.state = undefined;
-          req.session.shop = undefined;
-
-          // Save the session changes
-          await new Promise((resolve, reject) => {
-            req.session.save((err) => {
-              if (err) {
-                console.error("Error saving session:", err);
-                reject(err);
-              } else {
-                console.log("Session updated successfully");
-                resolve();
-              }
-            });
-          });
-
-          // Redirect to app home
-          return res.redirect(
-            `/dev/inventory/shopify/app?shop=${encodeURIComponent(shop)}`
-          );
-        } else {
-          throw new Error(
-            "Failed to get access token: " + JSON.stringify(tokenData)
-          );
+      // Manually exchange the code for an access token
+      const accessTokenResponse = await fetch(
+        `https://${shop}/admin/oauth/access_token`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            client_id: shopifyClientId,
+            client_secret: shopifyClientSecret,
+            code,
+          }),
         }
-      } catch (error) {
-        console.error("OAuth callback error:", error);
+      );
 
-        res.status(500).send(`
+      const tokenData = await accessTokenResponse.json();
+      console.log("Token exchange response:", tokenData);
+
+      if (tokenData.access_token) {
+        // Create a session object
+        const shopifySession = {
+          shop,
+          accessToken: tokenData.access_token,
+          scope: tokenData.scope,
+          isOnline: false,
+          expires: null,
+        };
+
+        // Store the session
+        await storeSession(shopifySession);
+        console.log("Session stored successfully");
+
+        // Redirect to app home
+        return res.redirect(
+          `/dev/inventory/shopify/app?shop=${encodeURIComponent(shop)}`
+        );
+      } else {
+        throw new Error(
+          "Failed to get access token: " + JSON.stringify(tokenData)
+        );
+      }
+    } catch (error) {
+      console.error("OAuth callback error:", error);
+
+      res.status(500).send(`
         
         
           
@@ -253,9 +224,8 @@ module.exports = (app) => {
           
         
       `);
-      }
     }
-  );
+  });
 
   // 3. Auth Verification Route - Check if a shop is authenticated
   app.get("/shopify/auth/verify", async (req, res) => {

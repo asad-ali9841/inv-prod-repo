@@ -1941,7 +1941,7 @@ class InventoryRepository {
       ) {
         const variants = updatedItemShared.variantIds;
         const shopifyFullProduct = {
-          ...updatedItemShared.toObject(),
+          ...updatedItemShared,
           variants,
         };
 
