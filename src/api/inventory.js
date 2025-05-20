@@ -78,7 +78,7 @@ module.exports = (app) => {
 
       await shopify.auth.begin({
         shop: shopify.utils.sanitizeShop(req.query.shop, true),
-        callbackPath: "/shopify/auth/callback",
+        callbackPath: "/dev/inventory/shopify/auth/callback",
         isOnline: false,
         rawRequest: req,
         rawResponse: res,
