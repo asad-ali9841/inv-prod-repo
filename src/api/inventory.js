@@ -76,6 +76,16 @@ module.exports = (app) => {
         });
       }
 
+      // Set up the OAuth cookie
+      const state = shopify.auth.nonce();
+
+      req.session.state = state;
+      req.session.shop = shop;
+      if (req.session.save) {
+        console.log("Session saved, it has a save method");
+        await req.session.save();
+      }
+
       await shopify.auth.begin({
         shop: shopify.utils.sanitizeShop(req.query.shop, true),
         callbackPath: "/dev/inventory/shopify/auth/callback",
@@ -116,7 +126,11 @@ module.exports = (app) => {
       console.log("Session stored successfully");
 
       // Redirect to app home
-      res.redirect(`${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(session.shop)}`);
+      res.redirect(
+        `${baseURL}/inventory/shopify/app?shop=${encodeURIComponent(
+          session.shop
+        )}`
+      );
     } catch (error) {
       console.error("OAuth callback error:", error);
 
