@@ -324,7 +324,7 @@ const URL_TO_ROLE_KEY_LOOKUP = {
     "Settings_Page__Integrations",
 };
 
-module.exports.checkPermission = (path, action, role) => {
+function checkPermission(path, action, role) {
   if (!role) return false;
 
   const permissionKey = URL_TO_ROLE_KEY_LOOKUP[path];
@@ -349,8 +349,9 @@ module.exports.checkPermission = (path, action, role) => {
   const defaultPermission = permissionObj && permissionObj[action];
 
   return defaultPermission;
-};
+}
 
 module.exports = {
   INVENTORY_SERVICE_URLS,
+  checkPermission,
 };
