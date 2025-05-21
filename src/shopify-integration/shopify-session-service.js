@@ -11,6 +11,7 @@ const storeSession = async (session) => {
       expires: session.expires || null,
       userId: session.onlineAccessInfo?.associated_user?.id || null,
       state: session.state || null,
+      isActive: true,
     };
 
     // Update or create the session
@@ -32,6 +33,7 @@ const retrieveSession = async (shop) => {
   try {
     const session = await ShopifySession.findOne({
       shop,
+      isActive: true,
       $or: [{ expires: null }, { expires: { $gt: new Date() } }],
     });
 
