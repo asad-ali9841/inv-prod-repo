@@ -22,7 +22,6 @@ function rbacMiddleware(path, action) {
     // Check permissions across all roles
     for (const role of roles) {
       const cacheRole = await redisClient.hGet("roles", role);
-      console.log("cacheRole", cacheRole);
       if (!cacheRole) continue; // Skip invalid roles
 
       const roleObj = JSON.parse(cacheRole);

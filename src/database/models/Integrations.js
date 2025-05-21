@@ -3,6 +3,9 @@ const {
   INTEGRATION_DOCUMENT_ID,
   fixedShopifyIntegrationFieldsToSync,
 } = require("../../utils/constants");
+const {
+  deleteSession,
+} = require("../../shopify-integration/shopify-session-service");
 
 const shopifySchema = new mongoose.Schema(
   {
@@ -50,6 +53,26 @@ const integrationSettingsSchema = new mongoose.Schema({
   integrations: {
     shopify: { type: shopifySchema, default: {} },
   },
+});
+
+integrationSettingsSchema.pre("findOneAndUpdate", async function (next) {
+  const update = this.getUpdate() || {};
+  const finalUpdate = update?.$set ?? update;
+
+  try {
+    if (finalUpdate && finalUpdate["integrations.shopify"]) {
+      const shopifyIntegration = finalUpdate["integrations.shopify"];
+
+      if (!shopifyIntegration.isActive) {
+        await deleteSession(shopifyIntegration.storeDomain);
+      }
+    }
+
+    return next();
+  } catch (error) {
+    console.error("Error updating integration:", error);
+    return next(error);
+  }
 });
 
 const IntegrationSettingsModel = mongoose.model(
