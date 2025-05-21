@@ -32,7 +32,6 @@ const retrieveSession = async (shop) => {
   try {
     const session = await ShopifySession.findOne({
       shop,
-      isActive: true,
       $or: [{ expires: null }, { expires: { $gt: new Date() } }],
     });
 
