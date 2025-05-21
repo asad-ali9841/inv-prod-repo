@@ -1,40 +1,45 @@
-function rbacMiddleware(rbac, resource, action) {
-    return function(req, res, next) {
-        // Assuming `req.user` holds the current user's role
-        if (!req.user) {
-            return res.status(401).json({
-                status: 0,
-                type: "error",
-                responseMessage: "Access denied",
-                data: {},
-                errorMessage: "You are not authenticated to perform this action"
-            });  // No user logged in
-        }
+const { getRedisClient } = require("../../database/connection");
+const { checkPermission } = require("../../utils/rbac-utils");
+const redisClient = getRedisClient();
+function rbacMiddleware(path, action) {
+  return async function (req, res, next) {
+    if (!req.user)
+      return res.status(401).json({
+        status: 0,
+        type: "error",
+        responseMessage: "You are not authenticated to perform this action",
+        data: {},
+      }); // No user logged in
+    const roles = req.user.role;
+    if (!roles || !Array.isArray(roles) || roles.length === 0)
+      return res.status(403).json({
+        status: 0,
+        type: "error",
+        responseMessage: "Access denied. No valid roles defined for the user",
+        data: {},
+      });
 
-        const role = req.user.role;
-        if (!role) {
-            return res.status(403).json({
-                status: 0,
-                type: "error",
-                responseMessage: "Access denied",
-                data: {},
-                errorMessage: "Role undefined for the user"
-            });
-        }
-        console.log(role,resource, action, "CHECK PERMISSION", rbac.checkPermission(role, resource, action))
-        // Check permission
-        if (rbac.checkPermission(role, resource, action)) {
-            next();  // Permission granted
-        } else {
-            res.status(403).json({
-                status: 0,
-                type: "error",
-                responseMessage: "Access denied",
-                data: {},
-                errorMessage: "You are not allowed to perform this action"
-            });  // Permission denied
-        }
-    };
-};
+    // Check permissions across all roles
+    for (const role of roles) {
+      const cacheRole = await redisClient.hGet("roles", role);
+      console.log("cacheRole", cacheRole);
+      if (!cacheRole) continue; // Skip invalid roles
 
-module.exports = {rbacMiddleware};
+      const roleObj = JSON.parse(cacheRole);
+
+      // If any role has the required permission, grant access
+      if (checkPermission(path, action, roleObj)) return next(); // Permission granted
+    }
+
+    return res.status(403).json({
+      status: 0,
+      type: "error",
+      responseMessage: [
+        "Access denied. You are not allowed to perform this action",
+      ],
+      data: {},
+    }); // Permission denied
+  };
+}
+
+module.exports = { rbacMiddleware };
