@@ -157,7 +157,7 @@ module.exports = (app) => {
 
         // Store the session
         await storeSession(shopifySession);
-        console.log("Session stored successfully");
+        console.log("Session stored successfully", shopifySession);
 
         // Redirect to app home
         return res.redirect(
