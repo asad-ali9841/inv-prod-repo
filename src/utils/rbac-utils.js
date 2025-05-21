@@ -97,12 +97,44 @@ const URL_TO_ROLE_KEY_LOOKUP = {
       roleKey: "Settings_Page__Items",
       action: "create",
     },
+    {
+      roleKey: "My_Tasks",
+      action: "create",
+    },
+    {
+      roleKey: "Put_Away",
+      action: "create",
+    },
+    {
+      roleKey: "Picking",
+      action: "create",
+    },
+    {
+      roleKey: "Packing",
+      action: "create",
+    },
     // add mobile as well
   ],
   [INVENTORY_SERVICE_URLS.GET_IMAGE_DOWNLOAD_URL]: true,
   [INVENTORY_SERVICE_URLS.DELETE_IMAGE]: [
     {
       roleKey: "Settings_Page__Items",
+      action: "create",
+    },
+    {
+      roleKey: "My_Tasks",
+      action: "create",
+    },
+    {
+      roleKey: "Put_Away",
+      action: "create",
+    },
+    {
+      roleKey: "Picking",
+      action: "create",
+    },
+    {
+      roleKey: "Packing",
       action: "create",
     },
     // add mobile as well
@@ -119,6 +151,22 @@ const URL_TO_ROLE_KEY_LOOKUP = {
     {
       roleKey: "Inventory_Page__Items_List",
       action: "read",
+    },
+    {
+      roleKey: "My_Tasks",
+      action: "create",
+    },
+    {
+      roleKey: "Put_Away",
+      action: "create",
+    },
+    {
+      roleKey: "Picking",
+      action: "create",
+    },
+    {
+      roleKey: "Packing",
+      action: "create",
     },
     // add mobile as well
   ],
@@ -137,6 +185,22 @@ const URL_TO_ROLE_KEY_LOOKUP = {
     {
       roleKey: "Inventory_Page__Items_List",
       action: "read",
+    },
+    {
+      roleKey: "My_Tasks",
+      action: "create",
+    },
+    {
+      roleKey: "Put_Away",
+      action: "create",
+    },
+    {
+      roleKey: "Picking",
+      action: "create",
+    },
+    {
+      roleKey: "Packing",
+      action: "create",
     },
     // add mobile as well
   ],
