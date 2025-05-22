@@ -11,6 +11,7 @@ const storeSession = async (session) => {
       expires: session.expires || null,
       userId: session.onlineAccessInfo?.associated_user?.id || null,
       state: session.state || null,
+      isActive: true,
     };
 
     // Update or create the session
